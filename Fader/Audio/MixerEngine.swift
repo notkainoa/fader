@@ -18,6 +18,7 @@ final class MixerEngine {
     let inputDeviceMonitor = AudioDeviceMonitor(direction: .input)
     let bluetooth = BluetoothAudioMonitor()
     let multiOutput = MultiOutputController()
+    let nowPlaying = NowPlayingMonitor()
 
     /// Set when tap creation fails with a permission-shaped error.
     private(set) var needsAudioCapturePermission = false
@@ -62,6 +63,10 @@ final class MixerEngine {
         inputDeviceMonitor.start()
         multiOutput.start()
         bluetooth.refresh()
+        nowPlaying.audibleBundleIDs = { [weak self] in
+            Set(self?.processMonitor.apps.filter(\.isPlaying).map(\.bundleID) ?? [])
+        }
+        nowPlaying.start()
 
         installHALListeners()
 
@@ -166,6 +171,7 @@ final class MixerEngine {
         } onChange: { [weak self] in
             Task { @MainActor in
                 self?.syncTaps()
+                self?.nowPlaying.audioStateChanged()
                 self?.observeApps()
             }
         }

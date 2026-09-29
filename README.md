@@ -23,12 +23,16 @@ Or download [the latest dmg](https://github.com/pantafive/fader/releases/latest/
 - **Several outputs at once** — drag a device onto the Output section and both play together, each with its own slider.
 - **Per-app volume** — a fader and mute for every app that plays sound; levels persist. Apps at full volume play untouched, bit-perfect.
 - **Per-app output** — drag one or more devices onto an app to play it through exactly those outputs, each with its own volume; everything else stays on your main output.
+- **Now playing** — every track, video, and browser tab that's playing shows under its app with artwork, play/pause, and scrubbing. Control Center shows one; Fader shows all of them.
 - **Microphone** — switch the default input, set gain, and see which apps are listening.
 - **In sync** — system volume follows the volume keys and Control Center; scrolling over any slider adjusts it.
 
 ## Permissions
 
-Only per-app volume needs one: macOS gates audio taps behind the System Audio Recording permission, requested the first time you move an app's fader. The tapped audio never leaves the Mac.
+- **System Audio Recording**, for per-app volume: macOS gates audio taps behind it, and Fader asks the first time you move an app's fader. The tapped audio never leaves the Mac.
+- **Automation**, for now playing: macOS asks once per app. For a browser, that happens the first time the popover is open while it plays; Fader then lists its tabs and runs a small script in them that reads and controls the page's media. For Spotify, Music, and TV, it happens on the first play/pause or scrub that macOS can't route on its own. Listing each tab separately also needs "Allow JavaScript from Apple Events" turned on in the browser; Fader shows where when it's needed.
+
+Artwork for a browser tab loads from the image address the page itself provides, the same one the browser would show.
 
 ## Development
 

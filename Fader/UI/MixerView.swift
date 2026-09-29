@@ -87,6 +87,14 @@ struct MixerView: View {
         .padding(12)
         .frame(width: 320)
         .task { engine.bluetooth.refresh() }
+        .onAppear {
+            engine.processMonitor.setPopoverVisible(true)
+            engine.nowPlaying.setPopoverVisible(true)
+        }
+        .onDisappear {
+            engine.processMonitor.setPopoverVisible(false)
+            engine.nowPlaying.setPopoverVisible(false)
+        }
         .onPreferenceChange(AppRouteZonePreferenceKey.self) { appRouteZones = $0 }
     }
 
@@ -208,10 +216,17 @@ struct MixerView: View {
         }
     }
 
-    /// Apps audible right now, plus silent ones the user has adjusted —
-    /// hiding those would strand their saved volume.
-    private var mixerApps: [AudioApp] {
-        engine.processMonitor.apps.filter { $0.isPlaying || !engine.volume(for: $0).isNeutral }
+    /// Apps audible right now, paused ones that still have something loaded
+    /// to resume, and silent ones the user has adjusted — hiding those would
+    /// strand their saved volume. `apps` is empty while per-app volume is
+    /// paused, leaving only the now-playing groups.
+    private func appEntries(apps: [AudioApp]) -> [AppsListEntry] {
+        AppsListOrder.entries(
+            apps: apps,
+            nowPlayingBundleIDs: engine.nowPlaying.sessions.map(\.ownerBundleID),
+            isAdjusted: { !engine.volume(for: $0).isNeutral },
+            name: { NowPlayingAppHeader.name(for: $0) }
+        )
     }
 
     @ViewBuilder
@@ -221,46 +236,27 @@ struct MixerView: View {
         } else if engine.multiOutput.isActive {
             // Per-app taps are suspended during multi-output (see
             // MixerEngine.createTap); live-looking sliders would be a lie.
+            // Now playing doesn't depend on taps, so it stays.
             emptyState(icon: "slider.horizontal.3",
                        message: "Per-app volume is paused while playing to multiple outputs")
-        } else if mixerApps.isEmpty {
-            emptyState(icon: "waveform.slash", message: "Nothing is playing")
+            let entries = appEntries(apps: [])
+            if !entries.isEmpty {
+                appsList(entries)
+            }
         } else {
-            // MenuBarExtra windows size to the content's ideal height, and a
-            // ScrollView's ideal height is zero — give it an explicit one.
-            let apps = mixerApps
-            // Cap the viewport at six rows; routed rows carry an extra route
-            // line, so size to the visible slice's real heights, not a flat
-            // per-row constant.
-            let visible = apps.prefix(6)
-            // A routed app is taller — its header plus one slider per device —
-            // so sum each app's real height instead of a flat per-row constant.
-            let listHeight = visible.reduce(CGFloat(0)) { total, app in
-                let pins = engine.routeUIDs(for: app).count
-                return total + (pins == 0
-                    ? AppRowView.rowHeight
-                    : AppRowView.routedHeaderHeight + CGFloat(pins) * AppRowView.routeDeviceHeight)
+            let entries = appEntries(apps: engine.processMonitor.apps)
+            if entries.isEmpty {
+                emptyState(icon: "waveform.slash", message: "Nothing is playing")
+            } else {
+                appsList(entries)
             }
-            let rows = VStack(spacing: 8) {
-                ForEach(apps) { app in
-                    AppRowView(app: app, isRouteTarget: routeTargetBundleID == app.bundleID)
-                }
-            }
-            .padding(.vertical, 2)
-            VStack(alignment: .leading, spacing: 6) {
-                sectionLabel("Apps")
-                #if RENDER_SHOTS
-                    // ImageRenderer doesn't lay out ScrollView content; the render
-                    // harness seeds few enough apps that a flat list needs no scroll.
-                    if RenderHarness.isActive {
-                        rows
-                    } else {
-                        ScrollView { rows }.frame(height: listHeight)
-                    }
-                #else
-                    ScrollView { rows }.frame(height: listHeight)
-                #endif
-            }
+        }
+    }
+
+    private func appsList(_ entries: [AppsListEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            sectionLabel("Apps")
+            AppsList(entries: entries, routeTargetBundleID: routeTargetBundleID)
         }
     }
 

@@ -16,6 +16,9 @@ final class AudioProcessMonitor {
     @ObservationIgnored private var listListener: HALListener?
     @ObservationIgnored private var pendingRefresh: Task<Void, Never>?
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    /// Poll faster while someone is looking: rows dim and brighten on this
+    /// flag, and two seconds reads as lag right after pressing play.
+    @ObservationIgnored private var isPopoverVisible = false
 
     #if RENDER_SHOTS
         /// Render harness only: publish a demo app list without any HAL contact.
@@ -34,8 +37,10 @@ final class AudioProcessMonitor {
             while !Task.isCancelled {
                 // Generous tolerance lets the kernel coalesce the wakeup with
                 // other timers — playing-state freshness doesn't need precision.
+                let fast = self?.isPopoverVisible == true
                 do {
-                    try await Task.sleep(for: .seconds(2), tolerance: .milliseconds(500))
+                    try await Task.sleep(for: fast ? .milliseconds(500) : .seconds(2),
+                                         tolerance: fast ? .milliseconds(100) : .milliseconds(500))
                 } catch {
                     break
                 }
@@ -44,6 +49,11 @@ final class AudioProcessMonitor {
             }
         }
         refresh()
+    }
+
+    func setPopoverVisible(_ visible: Bool) {
+        isPopoverVisible = visible
+        if visible { refresh() }
     }
 
     /// Core Audio resets discard client listeners and invalidate process
@@ -162,7 +172,7 @@ final class AudioProcessMonitor {
         return unsafeBitCast(symbol, to: ResponsiblePIDFunction.self)
     }()
 
-    private static func responsiblePID(for pid: pid_t) -> pid_t {
+    static func responsiblePID(for pid: pid_t) -> pid_t {
         guard let function = responsiblePIDFunction else { return pid }
         let owner = function(pid)
         return owner > 0 ? owner : pid

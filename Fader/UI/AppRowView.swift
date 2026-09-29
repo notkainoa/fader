@@ -19,11 +19,24 @@ struct AppRowView: View {
     /// header part, then one `routeDeviceHeight` per pinned device.
     static let routedHeaderHeight: CGFloat = 40
     static let routeDeviceHeight: CGFloat = 48
+    /// Row VStack spacing; each now-playing card or hint below the slider
+    /// adds its own height plus one of these.
+    static let lineSpacing: CGFloat = 5
 
     @Environment(MixerEngine.self) private var engine
     let app: AudioApp
     /// True while a device is dragged over this row — highlights the drop.
     var isRouteTarget: Bool = false
+
+    /// Core Audio's output flag is polled, so it trails a play press by up
+    /// to a poll interval, and it stays on for a while after a pause because
+    /// apps keep their output stream open. Now-playing sessions (updated the
+    /// moment a card's button is pressed) decide both ways when they can.
+    private var isAudible: Bool {
+        let nowPlaying = engine.nowPlaying
+        if nowPlaying.sessions(forBundleID: app.bundleID).contains(where: \.isPlaying) { return true }
+        return app.isPlaying && !nowPlaying.pausedAudioBundleIDs.contains(app.bundleID)
+    }
 
     var body: some View {
         let entry = engine.volume(for: app)
@@ -31,9 +44,9 @@ struct AppRowView: View {
         // A paused (silent, non-neutral) row dims so it reads apart from live
         // ones — but the pinned-device card stays bright: on a paused app its
         // outputs are exactly what the user wants to see.
-        let pausedDim: Double = app.isPlaying ? 1.0 : 0.5
+        let pausedDim: Double = isAudible ? 1.0 : 0.5
 
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: Self.lineSpacing) {
             HStack(spacing: 6) {
                 Image(nsImage: app.icon)
                     .resizable()
@@ -67,6 +80,17 @@ struct AppRowView: View {
             } else {
                 routeCard(routeUIDs)
             }
+
+            // Not dimmed with the row: a paused video is exactly what the
+            // card's play button is for.
+            ForEach(engine.nowPlaying.sessions(forBundleID: app.bundleID)) { session in
+                NowPlayingCard(session: session)
+                    .transition(.opacity)
+            }
+            if engine.nowPlaying.shouldShowJavaScriptHint(for: app.bundleID) {
+                BrowserJavaScriptHint(bundleID: app.bundleID)
+                    .transition(.opacity)
+            }
         }
         .padding(.horizontal, 6)
         .background(
@@ -81,7 +105,7 @@ struct AppRowView: View {
                 )
             }
         )
-        .animation(.easeOut(duration: 0.2), value: app.isPlaying)
+        .animation(.easeOut(duration: 0.2), value: isAudible)
         .contextMenu {
             Button("Reset to 100%") { engine.reset(app) }
             if !engine.routeUIDs(for: app).isEmpty {

@@ -53,6 +53,7 @@
             Scene(id: "05-microphone", direction: .input, pairTargeted: false, make: microphoneEngine),
             Scene(id: "06-bluetooth", direction: .output, pairTargeted: false, make: bluetoothEngine,
                   forcedHoverBT: "12-34-56-78-9A-BC"),
+            Scene(id: "07-now-playing", direction: .output, pairTargeted: false, make: nowPlayingEngine),
         ]
 
         static func runAndExit() {
@@ -118,16 +119,16 @@
                         outputDataSource: 0, inputDataSource: 0)
         }
 
-        private static func app(_ id: pid_t, _ bundleID: String, _ name: String,
-                                playing: Bool, recording: Bool = false) -> AudioApp {
+        static func app(_ id: pid_t, _ bundleID: String, _ name: String,
+                        playing: Bool, recording: Bool = false) -> AudioApp {
             AudioApp(id: id, bundleID: bundleID, name: name, objectIDs: [],
                      isPlaying: playing, isRecording: recording)
         }
 
-        private static let speakers = device(1, "BuiltInSpeakers", "MacBook Pro Speakers",
-                                             kAudioDeviceTransportTypeBuiltIn)
-        private static let airpodsPro = device(2, "AA-BB-CC-DD-EE-FF:output", "AirPods Pro",
-                                               kAudioDeviceTransportTypeBluetooth)
+        static let speakers = device(1, "BuiltInSpeakers", "MacBook Pro Speakers",
+                                     kAudioDeviceTransportTypeBuiltIn)
+        static let airpodsPro = device(2, "AA-BB-CC-DD-EE-FF:output", "AirPods Pro",
+                                       kAudioDeviceTransportTypeBluetooth)
         private static let airpods4 = device(3, "11-22-33-44-55-66:output", "AirPods 4",
                                              kAudioDeviceTransportTypeBluetooth)
         /// Extra genuine outputs used to even out scene heights: stamped "recent"
