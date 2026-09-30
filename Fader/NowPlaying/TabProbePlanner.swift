@@ -42,6 +42,20 @@ struct TabProbePlanner {
             keptAfterMiss = false
             pageChanged = false
         }
+
+        /// No reply: keep a media card for one more round, then back off.
+        mutating func recordMiss(now: Date) {
+            status = .unresponsive
+            if session != nil, !keptAfterMiss {
+                keptAfterMiss = true
+                retryAt = nil
+            } else {
+                session = nil
+                keptAfterMiss = false
+                timeouts += 1
+                retryAt = now + TabProbePlanner.backoff[min(timeouts, TabProbePlanner.backoff.count) - 1]
+            }
+        }
     }
 
     static let backoff: [TimeInterval] = [20, 40, 60]
@@ -77,14 +91,18 @@ struct TabProbePlanner {
     /// MediaRemote reported its title (`recentTitles`, normalized title to
     /// last time seen), which covers media played before Fader launched.
     func visibleSessions(recentTitles: [String: Date], now: Date) -> [NowPlayingSession] {
-        let candidates = order.enumerated().compactMap { index, ref -> (index: Int, session: NowPlayingSession,
-                                                                         played: Date)? in
+        struct Candidate {
+            let index: Int
+            let session: NowPlayingSession
+            let played: Date
+        }
+        let candidates = order.enumerated().compactMap { index, ref -> Candidate? in
             guard let entry = entries[ref], let session = entry.session else { return nil }
             let played = [entry.lastPlayed, recentTitles[NowPlayingMerge.normalized(session.title)]]
                 .compactMap(\.self).max()
             guard let played, session.isPlaying || now.timeIntervalSince(played) < Self.pausedLifetime
             else { return nil }
-            return (index, session, played)
+            return Candidate(index: index, session: session, played: played)
         }
         return candidates
             .sorted { ($0.session.isPlaying ? 1 : 0, $0.played) > ($1.session.isPlaying ? 1 : 0, $1.played) }
@@ -153,16 +171,7 @@ struct TabProbePlanner {
             if entry.pageChanged { entry.lastPlayed = nil }
             entry.markAnswered(.blocked)
         case .timedOut, .failed:
-            entry.status = .unresponsive
-            if entry.session != nil, !entry.keptAfterMiss {
-                entry.keptAfterMiss = true
-                entry.retryAt = nil
-            } else {
-                entry.session = nil
-                entry.keptAfterMiss = false
-                entry.timeouts += 1
-                entry.retryAt = now + Self.backoff[min(entry.timeouts, Self.backoff.count) - 1]
-            }
+            entry.recordMiss(now: now)
         case .notAuthorized:
             return
         }

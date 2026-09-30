@@ -8,7 +8,7 @@ import os
 @MainActor
 @Observable
 final class NowPlayingMonitor {
-    private static let logger = Logger(subsystem: "dev.pantafive.fader", category: "NowPlayingMonitor")
+    static let logger = Logger(subsystem: "dev.pantafive.fader", category: "NowPlayingMonitor")
     private static let scanInterval: Duration = .seconds(2)
     /// While the popover is closed, tabs are still checked now and then so
     /// the cards are already there when it opens.
@@ -16,7 +16,7 @@ final class NowPlayingMonitor {
     private static let dismissedHintsKey = "dismissedJavaScriptHints"
 
     private(set) var sessions: [NowPlayingSession] = []
-    private(set) var artwork: [String: NSImage] = [:]
+    internal(set) var artwork: [String: NSImage] = [:]
     /// Browsers that need JavaScript from Apple Events turned on before
     /// their tabs can be listed one by one.
     private(set) var browsersNeedingJavaScript: Set<String> = []
@@ -29,29 +29,29 @@ final class NowPlayingMonitor {
     )
     /// Media apps the user declined Automation access for; their sessions
     /// can't be controlled unless they are the elected now-playing app.
-    private(set) var deniedPlayers: Set<String> = []
+    internal(set) var deniedPlayers: Set<String> = []
 
     /// Bundle IDs of apps currently producing sound, for deciding which
     /// browsers are worth scanning.
     @ObservationIgnored var audibleBundleIDs: () -> Set<String> = { [] }
 
-    @ObservationIgnored private var mediaRemoteSessions: [NowPlayingSession] = []
+    @ObservationIgnored var mediaRemoteSessions: [NowPlayingSession] = []
     @ObservationIgnored private var tabPlanners: [String: TabProbePlanner] = [:]
     /// Per browser, normalized titles MediaRemote has reported and when each
     /// last played. The helper runs even while the popover is closed, so
     /// this remembers what was played between scans.
     @ObservationIgnored private var recentMediaRemoteTitles: [String: [String: Date]] = [:]
-    @ObservationIgnored private var bridge: MediaRemoteBridge?
-    @ObservationIgnored private let scanner = BrowserTabScanner()
+    @ObservationIgnored var bridge: MediaRemoteBridge?
+    @ObservationIgnored let scanner = BrowserTabScanner()
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var isPopoverVisible = false
     /// Commands awaiting confirmation, keyed by session id.
-    @ObservationIgnored private var pendingPlayback: [String: PendingPlayback] = [:]
+    @ObservationIgnored var pendingPlayback: [String: PendingPlayback] = [:]
     @ObservationIgnored private var playingBundleIDs: Set<String> = []
     @ObservationIgnored private var deniedBrowsers: Set<String> = []
-    @ObservationIgnored private var artworkLoads: Set<String> = []
+    @ObservationIgnored var artworkLoads: Set<String> = []
     /// Artwork URLs that failed to load, and when; retried after a while.
-    @ObservationIgnored private var failedArtwork: [String: Date] = [:]
+    @ObservationIgnored var failedArtwork: [String: Date] = [:]
 
     #if RENDER_SHOTS
         /// Render harness only: publish demo sessions without any helper process.
@@ -112,85 +112,6 @@ final class NowPlayingMonitor {
                     try? await Task.sleep(for: Self.backgroundScanInterval, tolerance: .seconds(5))
                 }
             }
-        }
-    }
-
-    func shouldShowJavaScriptHint(for bundleID: String) -> Bool {
-        browsersNeedingJavaScript.contains(bundleID) && !dismissedJavaScriptHints.contains(bundleID)
-    }
-
-    func dismissJavaScriptHint(for bundleID: String) {
-        dismissedJavaScriptHints.insert(bundleID)
-        UserDefaults.standard.set(dismissedJavaScriptHints.sorted(), forKey: Self.dismissedHintsKey)
-    }
-
-    // MARK: - Commands
-
-    /// Whether play/pause and scrubbing can reach this session.
-    func canControl(_ session: NowPlayingSession) -> Bool {
-        PlaybackRoute.route(for: session, deniedPlayers: deniedPlayers) != nil
-    }
-
-    func togglePlayPause(_ session: NowPlayingSession) {
-        let now = Date()
-        let playing = !session.isPlaying
-        guard send(playing ? .play : .pause, to: session) else { return }
-        expect(session.with(rate: playing ? 1 : 0, position: session.position(at: now), at: now), sentAt: now)
-    }
-
-    func seek(_ session: NowPlayingSession, to position: TimeInterval) {
-        let now = Date()
-        guard send(.seek(position), to: session) else { return }
-        expect(session.with(rate: session.rate, position: position, at: now), sentAt: now)
-    }
-
-    /// Shows the command's result right away and holds it against stale or
-    /// stray reports (see PendingPlayback). When the hold runs out the latest
-    /// real report shows again, which undoes it if the app ignored the command.
-    private func expect(_ session: NowPlayingSession, sentAt now: Date) {
-        pendingPlayback[session.id] = PendingPlayback(expected: session, sentAt: now)
-        publish()
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(PendingPlayback.hold + 0.05))
-            self?.publish()
-        }
-    }
-
-    private func send(_ command: PlaybackCommand, to session: NowPlayingSession) -> Bool {
-        guard let route = PlaybackRoute.route(for: session, deniedPlayers: deniedPlayers) else { return false }
-        let bundleID = session.ownerBundleID
-        switch route {
-        case let .mediaRemote(pid):
-            switch command {
-            case .play: bridge?.send("play \(pid)")
-            case .pause: bridge?.send("pause \(pid)")
-            case let .seek(position): bridge?.send("seek \(pid) \(position)")
-            }
-        case .appleScript:
-            ScriptedPlayer.perform(command, bundleID: bundleID) { [weak self] outcome in
-                Task { @MainActor [weak self] in self?.scriptedCommandFinished(bundleID: bundleID, outcome) }
-            }
-        case let .browserTab(tab, flavor):
-            Task { @MainActor [weak self, scanner] in
-                let outcome = await scanner.perform(command, tab: tab, bundleID: bundleID, flavor: flavor)
-                if outcome != .noMedia {
-                    Self.logger.error("""
-                    Tab command to \(bundleID, privacy: .public) failed: \(String(describing: outcome), privacy: .public)
-                    """)
-                }
-                // play() starts asynchronously; give the page a moment before
-                // asking again so the answer can confirm the pending command.
-                try? await Task.sleep(for: .milliseconds(300))
-                await self?.probe(tab, bundleID: bundleID, flavor: flavor)
-            }
-        }
-        return true
-    }
-
-    private func scriptedCommandFinished(bundleID: String, _ outcome: ScriptedPlayer.Outcome) {
-        if case .notAuthorized = outcome {
-            Self.logger.info("Automation denied for \(bundleID, privacy: .public)")
-            deniedPlayers.insert(bundleID)
         }
     }
 
@@ -293,6 +214,18 @@ final class NowPlayingMonitor {
         publish()
 
         let started = Date()
+        let timeouts = await probe(due, bundleID: bundleID, flavor: flavor)
+        Self.logger.debug("""
+        Scanned \(bundleID, privacy: .public): \(tabs.count) tabs, asked \(due.count), \
+        \(timeouts) timed out, \(Date().timeIntervalSince(started), format: .fixed(precision: 2))s
+        """)
+        guard !Task.isCancelled else { return }
+        updateJavaScriptHint(for: bundleID)
+    }
+
+    /// Asks the tabs several at a time, applying each answer as it arrives.
+    /// Returns how many timed out.
+    private func probe(_ due: [BrowserTab], bundleID: String, flavor: BrowserFlavor) async -> Int {
         var timeouts = 0
         await withTaskGroup(of: (BrowserTabRef, TabProbeOutcome).self) { [scanner] group in
             var queue = due[...]
@@ -312,27 +245,24 @@ final class NowPlayingMonitor {
                 apply(outcome, to: ref, bundleID: bundleID)
             }
         }
-        Self.logger.debug("""
-        Scanned \(bundleID, privacy: .public): \(tabs.count) tabs, asked \(due.count), \
-        \(timeouts) timed out, \(Date().timeIntervalSince(started), format: .fixed(precision: 2))s
-        """)
+        return timeouts
+    }
 
-        guard !Task.isCancelled else { return }
+    private func updateJavaScriptHint(for bundleID: String) {
         let needsJavaScript = tabPlanners[bundleID]?.hasBlockedTabs ?? false
         // Guarded: an @Observable set notifies on every write, and this runs
         // every scan.
-        if needsJavaScript != browsersNeedingJavaScript.contains(bundleID) {
-            if needsJavaScript {
-                browsersNeedingJavaScript.insert(bundleID)
-            } else {
-                browsersNeedingJavaScript.remove(bundleID)
-            }
+        guard needsJavaScript != browsersNeedingJavaScript.contains(bundleID) else { return }
+        if needsJavaScript {
+            browsersNeedingJavaScript.insert(bundleID)
+        } else {
+            browsersNeedingJavaScript.remove(bundleID)
         }
     }
 
-    private func probe(_ tab: BrowserTabRef, bundleID: String, flavor: BrowserFlavor) async {
+    func probe(_ tab: BrowserTabRef, bundleID: String, flavor: BrowserFlavor) async {
         guard tabPlanners[bundleID] != nil else { return }
-        apply(await scanner.probe(tab, bundleID: bundleID, flavor: flavor), to: tab, bundleID: bundleID)
+        await apply(scanner.probe(tab, bundleID: bundleID, flavor: flavor), to: tab, bundleID: bundleID)
     }
 
     private func apply(_ outcome: TabProbeOutcome, to tab: BrowserTabRef, bundleID: String) {
@@ -352,7 +282,7 @@ final class NowPlayingMonitor {
         publish()
     }
 
-    private func publish() {
+    func publish() {
         let now = Date()
         let tabs = tabPlanners.mapValues {
             $0.visibleSessions(recentTitles: recentMediaRemoteTitles[$0.ownerBundleID] ?? [:], now: now)
@@ -368,7 +298,8 @@ final class NowPlayingMonitor {
         let mediaRemote = mediaRemoteSessions.filter { session in
             guard !session.isPlaying, BrowserFlavor.supported[session.ownerBundleID] != nil,
                   let played = recentMediaRemoteTitles[session.ownerBundleID]?[
-                      NowPlayingMerge.normalized(session.title)]
+                      NowPlayingMerge.normalized(session.title)
+                  ]
             else { return true }
             return now.timeIntervalSince(played) < TabProbePlanner.pausedLifetime
         }
@@ -388,6 +319,19 @@ final class NowPlayingMonitor {
         loadMissingArtwork()
         pruneArtwork()
     }
+}
+
+// MARK: - Hints and paused audio
+
+extension NowPlayingMonitor {
+    func shouldShowJavaScriptHint(for bundleID: String) -> Bool {
+        browsersNeedingJavaScript.contains(bundleID) && !dismissedJavaScriptHints.contains(bundleID)
+    }
+
+    func dismissJavaScriptHint(for bundleID: String) {
+        dismissedJavaScriptHints.insert(bundleID)
+        UserDefaults.standard.set(dismissedJavaScriptHints.sorted(), forKey: Self.dismissedHintsKey)
+    }
 
     /// Called when Core Audio's per-app playing flags change, so an app drops
     /// out of `pausedAudioBundleIDs` once its output stream closes.
@@ -401,69 +345,5 @@ final class NowPlayingMonitor {
                                       audible: audibleBundleIDs())
         // Guarded: an @Observable set notifies on every write.
         if next != pausedAudioBundleIDs { pausedAudioBundleIDs = next }
-    }
-
-    // MARK: - Artwork
-
-    private func loadMissingArtwork() {
-        let now = Date()
-        for key in Set(sessions.compactMap(\.artworkKey)) {
-            // Plain http is blocked by App Transport Security anyway.
-            guard artwork[key] == nil, !artworkLoads.contains(key),
-                  failedArtwork[key].map({ now.timeIntervalSince($0) > Self.artworkRetryDelay }) ?? true,
-                  let url = URL(string: key), url.scheme == "https"
-            else { continue }
-            artworkLoads.insert(key)
-            Task { @MainActor [weak self] in
-                let image = await Self.downloadArtwork(url).flatMap(NSImage.init(data:))
-                guard let self else { return }
-                artworkLoads.remove(key)
-                if let image {
-                    artwork[key] = image
-                    failedArtwork[key] = nil
-                } else {
-                    failedArtwork[key] = Date()
-                }
-            }
-        }
-    }
-
-    private static let artworkRetryDelay: TimeInterval = 300
-    private nonisolated static let maxArtworkBytes = 4 << 20
-    /// Page-supplied addresses: no cookies or cache, short timeouts.
-    private nonisolated static let artworkSession: URLSession = {
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.timeoutIntervalForRequest = 10
-        configuration.timeoutIntervalForResource = 20
-        return URLSession(configuration: configuration)
-    }()
-
-    private nonisolated static func downloadArtwork(_ url: URL) async -> Data? {
-        guard let (bytes, response) = try? await artworkSession.bytes(from: url),
-              response.expectedContentLength <= maxArtworkBytes
-        else { return nil }
-        var data = Data()
-        do {
-            for try await byte in bytes {
-                data.append(byte)
-                if data.count > maxArtworkBytes { return nil }
-            }
-        } catch {
-            return nil
-        }
-        return data
-    }
-
-    private func pruneArtwork() {
-        // The helper sends MediaRemote artwork only once, so it stays while
-        // its session exists, even when a tab card is shown instead.
-        let live = Set(sessions.compactMap(\.artworkKey))
-            .union(mediaRemoteSessions.compactMap(\.artworkKey))
-        let stale = artwork.keys.filter { !live.contains($0) }
-        // A little slack so artwork survives a brief gap between reports.
-        guard stale.count > 8 else { return }
-        for key in stale {
-            artwork[key] = nil
-        }
     }
 }

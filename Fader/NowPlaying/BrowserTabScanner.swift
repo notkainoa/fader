@@ -199,34 +199,7 @@ final class BrowserTabScanner: @unchecked Sendable {
     /// One row per tab. Each property is fetched for a whole window in one
     /// event; a window without tabs (Safari's settings, DevTools) is skipped.
     static func listScript(bundleID: String, flavor: BrowserFlavor) -> String {
-        let window = switch flavor {
-        case .chromium:
-            """
-            set activeKey to missing value
-            try
-                set activeKey to id of active tab of w
-            end try
-            set ids to id of tabs of w
-            set urls to URL of tabs of w
-            set titles to title of tabs of w
-            repeat with i from 1 to count of ids
-                set end of out to {wid, item i of ids, my asText(item i of urls), my asText(item i of titles), activeKey}
-            end repeat
-            """
-        case .safari:
-            """
-            set activeKey to missing value
-            try
-                set activeKey to index of current tab of w
-            end try
-            set urls to URL of tabs of w
-            set titles to name of tabs of w
-            repeat with i from 1 to count of titles
-                set end of out to {wid, i, my asText(item i of urls), my asText(item i of titles), activeKey}
-            end repeat
-            """
-        }
-        return """
+        """
         on asText(v)
             try
                 return v as text
@@ -244,7 +217,7 @@ final class BrowserTabScanner: @unchecked Sendable {
                 repeat with w in windows
                     try
                         set wid to id of w
-                        \(window.replacingOccurrences(of: "\n", with: "\n                "))
+                        \(windowRows(flavor).replacingOccurrences(of: "\n", with: "\n                "))
                     end try
                 end repeat
                 return out
@@ -253,8 +226,41 @@ final class BrowserTabScanner: @unchecked Sendable {
         """
     }
 
-    // MARK: - Page scripts
+    /// Appends one row per tab of window `w` to `out`.
+    private static func windowRows(_ flavor: BrowserFlavor) -> String {
+        switch flavor {
+        case .chromium:
+            """
+            set selKey to missing value
+            try
+                set selKey to id of active tab of w
+            end try
+            set ids to id of tabs of w
+            set urls to URL of tabs of w
+            set titles to title of tabs of w
+            repeat with i from 1 to count of ids
+                set end of out to {wid, item i of ids, my asText(item i of urls), my asText(item i of titles), selKey}
+            end repeat
+            """
+        case .safari:
+            """
+            set selKey to missing value
+            try
+                set selKey to index of current tab of w
+            end try
+            set urls to URL of tabs of w
+            set titles to name of tabs of w
+            repeat with i from 1 to count of titles
+                set end of out to {wid, i, my asText(item i of urls), my asText(item i of titles), selKey}
+            end repeat
+            """
+        }
+    }
+}
 
+// MARK: - Page scripts
+
+extension BrowserTabScanner {
     private static func runJavaScript(_ js: String, in tab: BrowserTabRef, bundleID: String, flavor: BrowserFlavor,
                                       timeout: TimeInterval) -> TabProbeOutcome {
         guard let event = javaScriptEvent(js, in: tab, bundleID: bundleID, flavor: flavor) else { return .failed }

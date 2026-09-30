@@ -248,6 +248,9 @@ struct BrowserJavaScriptHint: View {
     /// undershooting would scroll the list and clip its last row.
     static let height: CGFloat = 48
 
+    private static let safariDeveloperTip =
+        "Safari shows the Developer tab once Settings › Advanced › Show features for web developers is on."
+
     @Environment(MixerEngine.self) private var engine
     let bundleID: String
 
@@ -263,9 +266,7 @@ struct BrowserJavaScriptHint: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help(BrowserFlavor.supported[bundleID] == .safari
-                    ? "Safari shows the Developer tab once Settings › Advanced › Show features for web developers is on."
-                    : "")
+                .help(BrowserFlavor.supported[bundleID] == .safari ? Self.safariDeveloperTip : "")
             Button {
                 engine.nowPlaying.dismissJavaScriptHint(for: bundleID)
             } label: {
