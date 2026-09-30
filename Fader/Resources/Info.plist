@@ -24,6 +24,8 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Fader shows the video or music playing in each browser tab and lets you play or pause it, along with media apps like Spotify and Music, so you can control everything that plays, not just one.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Fader adjusts each app's volume by processing its audio. Audio never leaves your Mac.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

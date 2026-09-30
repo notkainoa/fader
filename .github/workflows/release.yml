@@ -99,6 +99,10 @@ jobs:
               --preserve-metadata=entitlements -s "$SIGNING_IDENTITY" "$ITEM"
           done
           codesign --force --options runtime --timestamp -s "$SIGNING_IDENTITY" "$SPARKLE"
+          # The now-playing helper library is nested code too; sign it
+          # explicitly rather than trusting the copy phase's flags.
+          codesign --force --options runtime --timestamp -s "$SIGNING_IDENTITY" \
+            "$APP/Contents/Frameworks/libFaderMediaRemote.dylib"
           codesign --force --options runtime --timestamp \
             --entitlements Fader/Resources/Fader.entitlements -s "$SIGNING_IDENTITY" "$APP"
 
@@ -118,6 +122,10 @@ jobs:
             echo "Binary not stripped: $DEFINED defined symbols" >&2
             exit 1
           fi
+          # perl looks the helper's entry point up by name at runtime.
+          LIB=build/Build/Products/Release/Fader.app/Contents/Frameworks/libFaderMediaRemote.dylib
+          nm -gU "$LIB" | grep -q '_fader_media_remote_run$' \
+            || { echo "Now-playing entry point missing from $LIB" >&2; exit 1; }
           codesign --verify --strict --deep build/Build/Products/Release/Fader.app
           codesign -d --entitlements - build/Build/Products/Release/Fader.app 2>&1 \
             | grep -q audio-input || { echo "Entitlements lost in re-sign" >&2; exit 1; }

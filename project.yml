@@ -47,6 +47,13 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: Sparkle
+      # Loaded by /usr/bin/perl at runtime, never linked into the app.
+      - target: FaderMediaRemote
+        link: false
+        embed: true
+        codeSign: true
+        copy:
+          destination: frameworks
     # Local builds show "local" in the menu header instead of the release
     # number they were forked from. Stamps only the display string — the
     # numeric CFBundleVersion stays, so Sparkle's comparison is untouched.
@@ -84,6 +91,49 @@ targets:
         com.apple.security.temporary-exception.mach-lookup.global-name:
           - dev.pantafive.fader-spks
           - dev.pantafive.fader-spki
+        # Browser tab scanning (NowPlaying/BrowserTabScanner.swift) and media
+        # app control (NowPlaying/ScriptedPlayer.swift). The sandbox drops
+        # Apple Events to any app not listed here; keep in sync with
+        # BrowserFlavor.supported and ScriptedPlayer.supported (a unit test
+        # checks).
+        com.apple.security.automation.apple-events: true
+        com.apple.security.temporary-exception.apple-events:
+          - com.spotify.client
+          - com.apple.Music
+          - com.apple.TV
+          - com.apple.Safari
+          - com.apple.SafariTechnologyPreview
+          - com.google.Chrome
+          - com.google.Chrome.beta
+          - com.google.Chrome.canary
+          - org.chromium.Chromium
+          - com.brave.Browser
+          - com.microsoft.edgemac
+          - com.vivaldi.Vivaldi
+          - com.operasoftware.Opera
+          - company.thebrowser.Browser
+          - company.thebrowser.dia
+          - net.imput.helium
+          - ai.perplexity.comet
+
+  # Now-playing helper: /usr/bin/perl dlopens it to reach MediaRemote, which
+  # refuses non-Apple processes since macOS 15.4 (see FaderMediaRemote.m).
+  FaderMediaRemote:
+    type: library.dynamic
+    platform: macOS
+    sources: [FaderMediaRemote]
+    settings:
+      base:
+        PRODUCT_NAME: FaderMediaRemote
+        EXECUTABLE_PREFIX: lib
+        CLANG_ENABLE_OBJC_ARC: true
+        OTHER_LDFLAGS: -framework Foundation
+        SKIP_INSTALL: true
+        LD_DYLIB_INSTALL_NAME: "@rpath/libFaderMediaRemote.dylib"
+      configs:
+        Release:
+          # perl finds the entry point by name; a full strip would remove it.
+          STRIP_STYLE: non-global
 
   # Hostless unit tests: pure-logic sources are compiled into the bundle
   # directly, so no app process needs to launch (LSUIElement hosts hang
@@ -109,6 +159,12 @@ targets:
       # Property wrappers and AudioDirection; nothing in the tests touches
       # a live HAL.
       - Fader/Audio/HALProperty.swift
+      - Fader/NowPlaying/NowPlayingSession.swift
+      - Fader/NowPlaying/BrowserTabScanner.swift
+      - Fader/NowPlaying/TabProbePlanner.swift
+      - Fader/NowPlaying/ScriptedPlayer.swift
+      - Fader/NowPlaying/PlaybackRoute.swift
+      - Fader/UI/AppsListOrder.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: true
