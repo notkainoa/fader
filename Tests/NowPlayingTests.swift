@@ -271,7 +271,7 @@ struct NowPlayingTests {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("Fader/Resources/Fader.entitlements")
+            .appendingPathComponent("Sliders/Resources/Sliders.entitlements")
         let plist = try #require(NSDictionary(contentsOf: url))
         let allowed = Set(plist["com.apple.security.temporary-exception.apple-events"] as? [String] ?? [])
 

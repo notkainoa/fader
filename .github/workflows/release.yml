@@ -70,7 +70,7 @@ jobs:
         run: |
           VERSION=${GITHUB_REF_NAME#v}
           xcodegen generate
-          xcodebuild -project Fader.xcodeproj -scheme Fader -configuration Release \
+          xcodebuild -project Sliders.xcodeproj -scheme Sliders -configuration Release \
             MARKETING_VERSION="$VERSION" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
@@ -89,7 +89,7 @@ jobs:
         env:
           SIGNING_IDENTITY: ${{ secrets.DEVELOPER_ID_IDENTITY }}
         run: |
-          APP=build/Build/Products/Release/Fader.app
+          APP=build/Build/Products/Release/Sliders.app
           SPARKLE=$APP/Contents/Frameworks/Sparkle.framework
           for ITEM in "$SPARKLE/Versions/B/XPCServices/Installer.xpc" \
                       "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" \
@@ -102,9 +102,9 @@ jobs:
           # The now-playing helper library is nested code too; sign it
           # explicitly rather than trusting the copy phase's flags.
           codesign --force --options runtime --timestamp -s "$SIGNING_IDENTITY" \
-            "$APP/Contents/Frameworks/libFaderMediaRemote.dylib"
+            "$APP/Contents/Frameworks/libSlidersMediaRemote.dylib"
           codesign --force --options runtime --timestamp \
-            --entitlements Fader/Resources/Fader.entitlements -s "$SIGNING_IDENTITY" "$APP"
+            --entitlements Sliders/Resources/Sliders.entitlements -s "$SIGNING_IDENTITY" "$APP"
 
       # DEPLOYMENT_POSTPROCESSING strip is finicky with the plain `build`
       # action — verify it actually ran and the signature survived before
@@ -115,7 +115,7 @@ jobs:
           # Without pipefail a failed nm reads as 0 symbols and the check
           # passes vacuously; assert the binary exists for a clear message.
           set -o pipefail
-          BIN=build/Build/Products/Release/Fader.app/Contents/MacOS/Fader
+          BIN=build/Build/Products/Release/Sliders.app/Contents/MacOS/Sliders
           [ -f "$BIN" ] || { echo "App binary missing at $BIN" >&2; exit 1; }
           DEFINED=$(nm -U "$BIN" | wc -l | tr -d ' ')
           if [ "$DEFINED" -gt 5 ]; then
@@ -123,11 +123,11 @@ jobs:
             exit 1
           fi
           # perl looks the helper's entry point up by name at runtime.
-          LIB=build/Build/Products/Release/Fader.app/Contents/Frameworks/libFaderMediaRemote.dylib
-          nm -gU "$LIB" | grep -q '_fader_media_remote_run$' \
+          LIB=build/Build/Products/Release/Sliders.app/Contents/Frameworks/libSlidersMediaRemote.dylib
+          nm -gU "$LIB" | grep -q '_sliders_media_remote_run$' \
             || { echo "Now-playing entry point missing from $LIB" >&2; exit 1; }
-          codesign --verify --strict --deep build/Build/Products/Release/Fader.app
-          codesign -d --entitlements - build/Build/Products/Release/Fader.app 2>&1 \
+          codesign --verify --strict --deep build/Build/Products/Release/Sliders.app
+          codesign -d --entitlements - build/Build/Products/Release/Sliders.app 2>&1 \
             | grep -q audio-input || { echo "Entitlements lost in re-sign" >&2; exit 1; }
 
       - name: Notarize and package
@@ -138,18 +138,18 @@ jobs:
         run: |
           set -o pipefail
           VERSION=${GITHUB_REF_NAME#v}
-          APP=build/Build/Products/Release/Fader.app
+          APP=build/Build/Products/Release/Sliders.app
           mkdir -p dist/dmg
 
           # The shipped binary is stripped; the dSYM is the only way to
           # symbolicate user crash logs. Package it first — a missing dSYM
           # must fail the job before the notarization round-trips are spent.
-          ditto -c -k --keepParent build/Build/Products/Release/Fader.app.dSYM \
-            "dist/Fader-$VERSION-dSYM.zip"
+          ditto -c -k --keepParent build/Build/Products/Release/Sliders.app.dSYM \
+            "dist/Sliders-$VERSION-dSYM.zip"
 
           # One short-lived store-credentials call instead of ps-visible
           # passwords on each long notarytool --wait invocation.
-          xcrun notarytool store-credentials fader-ci --keychain "$KEYCHAIN" \
+          xcrun notarytool store-credentials sliders-ci --keychain "$KEYCHAIN" \
             --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$APP_PASSWORD" --no-validate
 
           # `submit --wait` exits 0 even when the verdict is Invalid — only
@@ -158,22 +158,22 @@ jobs:
           # Accepted releases; verify against real output on the next one).
           notarize() {
             xcrun notarytool submit "$1" \
-              --keychain "$KEYCHAIN" --keychain-profile fader-ci --wait \
+              --keychain "$KEYCHAIN" --keychain-profile sliders-ci --wait \
               | tee "$RUNNER_TEMP/notary.log"
             grep -qi "accepted" "$RUNNER_TEMP/notary.log"
           }
 
-          ditto -c -k --keepParent "$APP" dist/Fader.zip
-          notarize dist/Fader.zip
+          ditto -c -k --keepParent "$APP" dist/Sliders.zip
+          notarize dist/Sliders.zip
           xcrun stapler staple "$APP"
-          rm dist/Fader.zip
+          rm dist/Sliders.zip
 
           cp -R "$APP" dist/dmg/
           ln -s /Applications dist/dmg/Applications
-          hdiutil create -volname "Fader" -srcfolder dist/dmg -ov -format UDZO "dist/Fader.dmg"
-          notarize "dist/Fader.dmg"
-          xcrun stapler staple "dist/Fader.dmg"
-          cp "dist/Fader.dmg" "dist/Fader-$VERSION.dmg"
+          hdiutil create -volname "Sliders" -srcfolder dist/dmg -ov -format UDZO "dist/Sliders.dmg"
+          notarize "dist/Sliders.dmg"
+          xcrun stapler staple "dist/Sliders.dmg"
+          cp "dist/Sliders.dmg" "dist/Sliders-$VERSION.dmg"
 
       # Must run after stapling — the ticket changes the dmg's bytes, and the
       # EdDSA signature covers them. The feed URL in Info.plist is the stable
@@ -184,19 +184,19 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          ENCLOSURE_ATTRS=$(echo "$SPARKLE_PRIVATE_KEY" | sign_update --ed-key-file - "dist/Fader-$VERSION.dmg")
+          ENCLOSURE_ATTRS=$(echo "$SPARKLE_PRIVATE_KEY" | sign_update --ed-key-file - "dist/Sliders-$VERSION.dmg")
           cat > dist/appcast.xml <<EOF
           <?xml version="1.0" encoding="utf-8"?>
           <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
             <channel>
-              <title>Fader</title>
+              <title>Sliders</title>
               <item>
                 <title>$VERSION</title>
-                <link>https://github.com/pantafive/fader/releases/tag/v$VERSION</link>
+                <link>https://github.com/notkainoa/sliders/releases/tag/v$VERSION</link>
                 <sparkle:version>$VERSION</sparkle:version>
                 <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
                 <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-                <enclosure url="https://github.com/pantafive/fader/releases/download/v$VERSION/Fader-$VERSION.dmg" $ENCLOSURE_ATTRS type="application/octet-stream"/>
+                <enclosure url="https://github.com/notkainoa/sliders/releases/download/v$VERSION/Sliders-$VERSION.dmg" $ENCLOSURE_ATTRS type="application/octet-stream"/>
               </item>
             </channel>
           </rss>
@@ -210,37 +210,9 @@ jobs:
           # Idempotent: a re-run heals a partial release instead of failing.
           if ! gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
             gh release create "$GITHUB_REF_NAME" \
-              --title "Fader $VERSION" --generate-notes --draft
+              --title "Sliders $VERSION" --generate-notes --draft
           fi
           gh release upload "$GITHUB_REF_NAME" \
-            "dist/Fader.dmg" "dist/Fader-$VERSION.dmg" "dist/Fader-$VERSION-dSYM.zip" \
+            "dist/Sliders.dmg" "dist/Sliders-$VERSION.dmg" "dist/Sliders-$VERSION-dSYM.zip" \
             "dist/appcast.xml" --clobber
           gh release edit "$GITHUB_REF_NAME" --draft=false
-
-      # After undraft only — the cask must never point at an unpublished dmg.
-      # TAP_PUSH_TOKEN: fine-grained PAT, homebrew-tap repo only, Contents
-      # read/write; expires yearly. If this step fails the release is already
-      # live — fix the token and re-run, the no-diff guard makes it safe.
-      - name: Checkout homebrew-tap
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: pantafive/homebrew-tap
-          token: ${{ secrets.TAP_PUSH_TOKEN }}
-          path: tap
-
-      - name: Bump Homebrew cask
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          SHA256=$(shasum -a 256 "dist/Fader-$VERSION.dmg" | awk '{print $1}')
-          cd tap
-          sed -i '' \
-            -e "s/^  version .*/  version \"$VERSION\"/" \
-            -e "s/^  sha256 .*/  sha256 \"$SHA256\"/" Casks/fader.rb
-          if git diff --quiet; then
-            echo "Cask already at $VERSION"
-            exit 0
-          fi
-          git -c user.name="github-actions[bot]" \
-              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-              commit -am "fader $VERSION"
-          git push

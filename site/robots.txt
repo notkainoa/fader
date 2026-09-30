@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://fader.pantafive.dev/sitemap.xml
+Sitemap: https://sliders.pages.dev/sitemap.xml

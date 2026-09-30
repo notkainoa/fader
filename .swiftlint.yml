@@ -1,5 +1,5 @@
 included:
-  - Fader
+  - Sliders
   - Tests
 
 line_length: 120

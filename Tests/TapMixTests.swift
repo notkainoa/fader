@@ -24,7 +24,7 @@ private func mixed(input: [Float], inputChannels: Int,
 // BUG: tapped apps sounded garbled ("robotic voice") on mono outputs.
 //
 // Reported: owner, 2026-07-10 — voice in Telegram calls turned robotic while
-//   the app had a Fader volume set and a Bluetooth headset was in call mode.
+//   the app had a Sliders volume set and a Bluetooth headset was in call mode.
 // Date: 2026-07-10
 //
 // What happened:

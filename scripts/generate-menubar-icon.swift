@@ -1,7 +1,7 @@
 // Renders the menu bar status icon: the three-fader mark as an Apple
 // template image (monochrome, alpha-only; the system tints it per theme).
 // Outputs MenuBarIconTemplate.png (18pt) and @2x. Regenerate via
-// `swift scripts/generate-menubar-icon.swift Fader/Resources`.
+// `swift scripts/generate-menubar-icon.swift Sliders/Resources`.
 import AppKit
 
 let point: CGFloat = 18
