@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fader — per-app volume &amp; audio output switcher for Mac</title>
-<meta name="description" content="Free, open-source macOS menu bar app: per-app volume faders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
-<link rel="canonical" href="https://fader.pantafive.dev/">
+<title>Sliders — per-app volume &amp; audio output switcher for Mac</title>
+<meta name="description" content="Free, open-source macOS menu bar app: per-app volume sliders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
+<link rel="canonical" href="https://sliders.pages.dev/">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/icon.png">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Fader">
-<meta property="og:title" content="Fader — per-app volume &amp; audio output switcher for Mac">
-<meta property="og:description" content="Free, open-source macOS menu bar app: per-app volume faders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
-<meta property="og:url" content="https://fader.pantafive.dev/">
-<meta property="og:image" content="https://fader.pantafive.dev/og.png">
+<meta property="og:site_name" content="Sliders">
+<meta property="og:title" content="Sliders — per-app volume &amp; audio output switcher for Mac">
+<meta property="og:description" content="Free, open-source macOS menu bar app: per-app volume sliders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
+<meta property="og:url" content="https://sliders.pages.dev/">
+<meta property="og:image" content="https://sliders.pages.dev/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Fader — per-app volume &amp; audio output switcher for Mac">
-<meta name="twitter:description" content="Free, open-source macOS menu bar app: per-app volume faders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
-<meta name="twitter:image" content="https://fader.pantafive.dev/og.png">
+<meta name="twitter:title" content="Sliders — per-app volume &amp; audio output switcher for Mac">
+<meta name="twitter:description" content="Free, open-source macOS menu bar app: per-app volume sliders, one-click output switching, audio on two devices at once. Zero telemetry. macOS 15+, Apple silicon.">
+<meta name="twitter:image" content="https://sliders.pages.dev/og.png">
 <style>
   :root {
     color-scheme: dark;
@@ -178,40 +178,6 @@
     color: var(--faint);
     margin-top: 14px;
   }
-  .brew {
-    position: relative;
-    display: block;
-    text-align: center;
-    margin-top: 18px;
-    padding: 8px 70px 8px 18px;
-    background: var(--pill-bg);
-    border: 1px solid var(--hairline);
-    border-radius: 980px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 12px;
-    color: var(--muted);
-    user-select: all;
-  }
-  .brew::before {
-    content: "$ ";
-    color: var(--muted);
-    user-select: none;
-  }
-  .brew .copy {
-    position: absolute;
-    right: 5px;
-    top: 50%;
-    transform: translateY(-50%);
-    border: none;
-    background: var(--pill-btn);
-    color: var(--muted);
-    font: 600 11px -apple-system, BlinkMacSystemFont, sans-serif;
-    padding: 4px 10px;
-    border-radius: 980px;
-    cursor: pointer;
-    user-select: none;
-  }
-  .brew .copy:hover { color: var(--text); }
   /* Stage — sources flow through the popover into the active device */
   .stage {
     /* Stage-scoped palette: the mockup mirrors the real app in both
@@ -357,7 +323,7 @@
   @media (prefers-reduced-motion: reduce) {
     .eq i, #flows .dots, .dcard.active .dico::after { animation: none; }
   }
-  /* Popover mockup — mirrors the real Fader popover */
+  /* Popover mockup — mirrors the real Sliders popover */
   .mock {
     width: min(420px, 100%);
     background: var(--m-bg);
@@ -669,22 +635,22 @@
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "Fader",
-  "url": "https://fader.pantafive.dev/",
-  "description": "Free, open-source macOS menu bar app: per-app volume faders, one-click audio output switching, Bluetooth headphone connect, audio on two devices at once, microphone switching. No telemetry.",
+  "name": "Sliders",
+  "url": "https://sliders.pages.dev/",
+  "description": "Free, open-source macOS menu bar app: per-app volume sliders, one-click audio output switching, Bluetooth headphone connect, audio on two devices at once, microphone switching. No telemetry.",
   "applicationCategory": "UtilitiesApplication",
   "operatingSystem": "macOS 15 or later (Apple silicon)",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "license": "https://github.com/pantafive/fader/blob/main/LICENSE",
+  "license": "https://github.com/notkainoa/sliders/blob/main/LICENSE",
   "isAccessibleForFree": true,
-  "downloadUrl": "https://github.com/pantafive/fader/releases/latest/download/Fader.dmg",
-  "installUrl": "https://fader.pantafive.dev/#install",
-  "screenshot": "https://fader.pantafive.dev/screenshot.png",
-  "image": "https://fader.pantafive.dev/og.png",
-  "author": { "@type": "Person", "name": "pantafive", "url": "https://github.com/pantafive" },
-  "sameAs": ["https://github.com/pantafive/fader"],
+  "downloadUrl": "https://github.com/notkainoa/sliders/releases/latest/download/Sliders.dmg",
+  "installUrl": "https://sliders.pages.dev/#install",
+  "screenshot": "https://sliders.pages.dev/screenshot.png",
+  "image": "https://sliders.pages.dev/og.png",
+  "author": { "@type": "Person", "name": "notkainoa", "url": "https://github.com/notkainoa" },
+  "sameAs": ["https://github.com/notkainoa/sliders"],
   "featureList": [
-    "Per-app volume fader and mute for every app that plays sound",
+    "Per-app volume slider and mute for every app that plays sound",
     "One-click audio output switching from the menu bar",
     "Connect and disconnect paired Bluetooth headphones",
     "Play audio on several output devices at once, each with its own volume",
@@ -698,9 +664,9 @@
 <body>
 <nav class="localnav">
   <div class="ln-wrap">
-    <a class="brand" href="/">Fader</a>
+    <a class="brand" href="/">Sliders</a>
     <div class="ln-actions">
-      <a href="https://github.com/pantafive/fader">GitHub</a>
+      <a href="https://github.com/notkainoa/sliders">GitHub</a>
       <a class="ln-cta" href="#install">Install</a>
       <button class="ln-theme" id="theme-toggle" aria-label="Toggle dark and light theme">
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9"/></svg>
@@ -711,10 +677,9 @@
 </nav>
 <main>
   <section class="hero" id="install">
-    <h1>Fader</h1>
+    <h1>Sliders</h1>
     <p class="tagline"><strong>Per-app volume.</strong> <strong>One-click output switching.</strong> Audio on <strong>two devices at once.</strong> Right in your Mac&nbsp;menu&nbsp;bar.</p>
-    <a class="download" href="https://github.com/pantafive/fader/releases/latest/download/Fader.dmg">Download for macOS</a>
-    <span class="brew">brew install --cask pantafive/tap/fader<button class="copy" aria-label="Copy command">Copy</button></span>
+    <a class="download" href="https://github.com/notkainoa/sliders/releases/latest/download/Sliders.dmg">Download for macOS</a>
     <p class="fineprint">macOS 15+ &middot; Apple silicon &middot; free &amp; open source</p>
     <div class="stage" id="stage" data-tab="out">
       <svg id="flows" aria-hidden="true">
@@ -819,7 +784,7 @@
     <p class="eyebrow">Outputs</p>
     <h2>Switch audio output on Mac in one click.</h2>
     <div class="copy">
-      <p>Pick any output device from the menu bar and your sound moves there: headphones, speakers, a display, AirPlay. The active one is marked, so you always know where audio is going. <strong>Drag a row and you set its priority</strong>; from then on Fader switches to a higher-ranked device when it connects, and falls back to the best one still present when the current default disappears. This ranking stays dormant until you reorder the list the first time, so nothing changes behind your back.</p>
+      <p>Pick any output device from the menu bar and your sound moves there: headphones, speakers, a display, AirPlay. The active one is marked, so you always know where audio is going. <strong>Drag a row and you set its priority</strong>; from then on Sliders switches to a higher-ranked device when it connects, and falls back to the best one still present when the current default disappears. This ranking stays dormant until you reorder the list the first time, so nothing changes behind your back.</p>
       <p>Bluetooth gets the same single click. Paired headphones that are currently disconnected still show up in the list; clicking one connects it and routes audio to it, and you disconnect from that same row. Wired devices you have not used in 30 days fold into a "Rarely used" group to keep the list short, and you can drag a row onto it to demote one yourself. <strong>System volume and mute stay in sync</strong> with your volume keys and Control Center.</p>
     </div>
   </section>
@@ -829,16 +794,16 @@
     <h2>Play Mac audio on <span class="grad">two devices at once</span>.</h2>
     <div class="copy">
       <p>Drag a device from the list onto the output section and both play together: <strong>one movie, two pairs of headphones, one plane</strong>. Each device in the group keeps its own volume slider, the ✕ removes it, and clicking any device in the list routes everything back to that single device. Try it in the popover above.</p>
-      <p>Fader builds this on the same multi-output device you could assemble by hand in Audio MIDI Setup, then removes it when you are done. Two things change while a group plays. The volume keys do nothing, because macOS gives a multi-output device no master volume — the per-device sliders replace them. And per-app faders pause, returning with their saved levels as soon as you are back on one output.</p>
+      <p>Sliders builds this on the same multi-output device you could assemble by hand in Audio MIDI Setup, then removes it when you are done. Two things change while a group plays. The volume keys do nothing, because macOS gives a multi-output device no master volume — the per-device sliders replace them. And per-app sliders pause, returning with their saved levels as soon as you are back on one output.</p>
     </div>
   </section>
 
   <section class="feature reveal">
     <p class="eyebrow">Mixer</p>
-    <h2>Per-app volume on Mac. A fader for every app.</h2>
+    <h2>Per-app volume on Mac. A slider for every app.</h2>
     <div class="copy">
-      <p>Every app that plays sound gets its own volume fader and a mute button. The levels persist across launches. Scroll the wheel or swipe the trackpad over any slider to adjust it without clicking.</p>
-      <p>An app left at 100% and unmuted is touched by nothing: <strong>no tap, no processing, bit-perfect native playback</strong>. A tap exists only while a fader sits below full volume or the app is muted.</p>
+      <p>Every app that plays sound gets its own volume slider and a mute button. The levels persist across launches. Scroll the wheel or swipe the trackpad over any slider to adjust it without clicking.</p>
+      <p>An app left at 100% and unmuted is touched by nothing: <strong>no tap, no processing, bit-perfect native playback</strong>. A tap exists only while a slider sits below full volume or the app is muted.</p>
     </div>
   </section>
 
@@ -856,7 +821,7 @@
     <h2>Switch microphones and watch input.</h2>
     <div class="copy">
       <p>The microphone tab switches your default input and sets its input gain from a slider. On devices whose gain is fixed in hardware the slider disables itself, so the control never lies about what it can do. You also see <strong>which apps are using the microphone right now</strong>, which is enough to spot a forgotten recorder.</p>
-      <p>That indicator is the limit of what is possible per app. Core Audio exposes no per-app input gain, so Fader cannot offer one; this is an OS-level API boundary, not a feature waiting on the roadmap.</p>
+      <p>That indicator is the limit of what is possible per app. Core Audio exposes no per-app input gain, so Sliders cannot offer one; this is an OS-level API boundary, not a feature waiting on the roadmap.</p>
     </div>
   </section>
 
@@ -864,8 +829,8 @@
     <p class="eyebrow">Privacy</p>
     <h2>One honest permission.</h2>
     <div class="copy">
-      <p>Most of Fader needs no permissions. Device switching, system volume, and the entire microphone tab work the moment you install. Per-app volume is the one exception: it uses Core Audio process taps, an API macOS 14.4 added and then gated behind the "System Audio Recording" permission. Fader asks for it the first time you move an app's fader.</p>
-      <p>The tapped audio is re-rendered to your output with the gain applied and <strong>never leaves the Mac</strong>. There are no kernel extensions, no virtual audio drivers, nothing to install in Settings. The name of that permission sounds broader than what Fader does with it, so I would rather explain it here than have it surprise you in a dialog.</p>
+      <p>Most of Sliders needs no permissions. Device switching, system volume, and the entire microphone tab work the moment you install. Per-app volume is the one exception: it uses Core Audio process taps, an API macOS 14.4 added and then gated behind the "System Audio Recording" permission. Sliders asks for it the first time you move an app's slider.</p>
+      <p>The tapped audio is re-rendered to your output with the gain applied and <strong>never leaves the Mac</strong>. There are no kernel extensions, no virtual audio drivers, nothing to install in Settings. The name of that permission sounds broader than what Sliders does with it, so I would rather explain it here than have it surprise you in a dialog.</p>
     </div>
   </section>
 
@@ -873,12 +838,12 @@
     <p class="eyebrow">Open source</p>
     <h2>Native and private.</h2>
     <div class="copy">
-      <p>Fader is a native Swift app for Apple silicon, macOS 15 and later, signed and notarized. Free under the MIT license, it is private in a way you can check: <strong>zero telemetry, zero analytics</strong>.</p>
+      <p>Sliders is a native Swift app for Apple silicon, macOS 15 and later, signed and notarized. Free under the MIT license, it is private in a way you can check: <strong>zero telemetry, zero analytics</strong>.</p>
     </div>
   </section>
 
   <footer>
-    &copy; 2026 pantafive &middot; MIT License &middot; <a href="https://github.com/pantafive/fader">GitHub</a>
+    &copy; 2026 notkainoa &middot; based on <a href="https://github.com/pantafive/fader">Fader</a> by pantafive &middot; MIT License &middot; <a href="https://github.com/notkainoa/sliders">GitHub</a>
   </footer>
 </main>
 <script>
@@ -905,8 +870,8 @@
       safari: document.querySelector('#mock .slider[data-app="safari"]'),
     };
     const volumeOf = (slider) => parseInt(slider.style.getPropertyValue("--v"), 10) || 0;
-    // What you'd hear: the app's fader scaled by the output volume. While
-    // multi-output plays, per-app faders are released and apps run native.
+    // What you'd hear: the app's slider scaled by the output volume. While
+    // multi-output plays, per-app sliders are released and apps run native.
     const heardVolume = (slider) => (isMulti() ? outVolume() : (volumeOf(slider) * outVolume()) / 100);
     const icons = ["\u{1F507}", "\u{1F508}", "\u{1F509}", "\u{1F50A}"];
     const volIcon = (pct) => (pct === 0 ? icons[0] : icons[1 + Math.min(2, Math.floor(pct / 34))]);
@@ -976,7 +941,7 @@
         card.style.setProperty("--amp", Math.max(heardVolume(slider) / 100, 0.04));
         card.querySelector(".apct").textContent = isMulti() ? "100%" : volumeOf(slider) + "%";
       }
-      // Multi-output suspends per-app faders, exactly like the app does.
+      // Multi-output suspends per-app sliders, exactly like the app does.
       document.getElementById("apps-out").style.display = isMulti() ? "none" : "";
       document.getElementById("apps-paused").hidden = !isMulti();
       document.querySelectorAll(".dcard").forEach((card) => {
@@ -1394,14 +1359,6 @@
         window.addEventListener("pointermove", move);
         window.addEventListener("pointerup", stop);
         window.addEventListener("pointercancel", stop);
-      });
-    });
-
-    const copyButton = document.querySelector(".brew .copy");
-    copyButton.addEventListener("click", () => {
-      navigator.clipboard.writeText("brew install --cask pantafive/tap/fader").then(() => {
-        copyButton.textContent = "Copied";
-        setTimeout(() => { copyButton.textContent = "Copy"; }, 1500);
       });
     });
 

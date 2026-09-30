@@ -52,5 +52,5 @@ jobs:
       - name: Build and test
         # Keep in sync with `make test` (Makefile).
         run: |
-          xcodebuild -project Fader.xcodeproj -scheme Fader -configuration Debug \
+          xcodebuild -project Sliders.xcodeproj -scheme Sliders -configuration Debug \
             CODE_SIGNING_ALLOWED=NO -derivedDataPath build test

@@ -21,7 +21,7 @@ glow.draw(
     options: []
 )
 
-// Fader motif on the left.
+// Sliders motif on the left.
 let trackWidth: CGFloat = 26
 let trackHeight: CGFloat = 360
 let trackY = (height - trackHeight) / 2
@@ -71,7 +71,7 @@ for fader in positions {
 }
 
 /// Wordmark and tagline on the right, in the site's Apple-style palette.
-let title = NSAttributedString(string: "Fader", attributes: [
+let title = NSAttributedString(string: "Sliders", attributes: [
     .font: NSFont.systemFont(ofSize: 110, weight: .bold),
     .foregroundColor: NSColor(red: 0.96, green: 0.96, blue: 0.97, alpha: 1),
     .kern: -2.2,

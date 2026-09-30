@@ -1,8 +1,8 @@
 # Developer entry points. Releases and the site deploy run in GitHub Actions
 # (.github/workflows); nothing here needs credentials.
 
-XCODEPROJ := Fader.xcodeproj
-SCHEME    := Fader
+XCODEPROJ := Sliders.xcodeproj
+SCHEME    := Sliders
 
 # TCC keys permission grants to the signing identity; unsigned (ad-hoc)
 # debug builds get pinned to the binary hash and re-prompt on every
@@ -35,7 +35,7 @@ lint:
 	pre-commit run --all-files
 
 run: build
-	open build/Build/Products/Debug/Fader.app
+	open build/Build/Products/Debug/Sliders.app
 
 # `build` is the -derivedDataPath above, so clean actually removes the
 # build products (the default DerivedData location never held them).
@@ -44,17 +44,17 @@ clean:
 
 # Regenerate the app icon from scripts/generate-icon.swift.
 icon:
-	swift scripts/generate-icon.swift /tmp/fader-icon-1024.png
-	rm -rf /tmp/fader.iconset && mkdir -p /tmp/fader.iconset
+	swift scripts/generate-icon.swift /tmp/sliders-icon-1024.png
+	rm -rf /tmp/sliders.iconset && mkdir -p /tmp/sliders.iconset
 	for size in 16 32 128 256 512; do \
-		sips -z $$size $$size /tmp/fader-icon-1024.png --out /tmp/fader.iconset/icon_$${size}x$${size}.png > /dev/null; \
-		sips -z $$((size * 2)) $$((size * 2)) /tmp/fader-icon-1024.png --out /tmp/fader.iconset/icon_$${size}x$${size}@2x.png > /dev/null; \
+		sips -z $$size $$size /tmp/sliders-icon-1024.png --out /tmp/sliders.iconset/icon_$${size}x$${size}.png > /dev/null; \
+		sips -z $$((size * 2)) $$((size * 2)) /tmp/sliders-icon-1024.png --out /tmp/sliders.iconset/icon_$${size}x$${size}@2x.png > /dev/null; \
 	done
-	iconutil -c icns /tmp/fader.iconset -o Fader/Resources/Fader.icns
+	iconutil -c icns /tmp/sliders.iconset -o Sliders/Resources/Sliders.icns
 
 # Regenerate the menu bar template icon (1x + 2x).
 menubar-icon:
-	swift scripts/generate-menubar-icon.swift Fader/Resources
+	swift scripts/generate-menubar-icon.swift Sliders/Resources
 
 # Regenerate the site's Open Graph preview card.
 og:
@@ -63,7 +63,7 @@ og:
 
 # Regenerate the site favicon (64 px covers 2x retina tabs; .ico for legacy /favicon.ico probers).
 favicon:
-	swift scripts/generate-favicon.swift /tmp/fader-favicon-1024.png
-	sips -z 64 64 /tmp/fader-favicon-1024.png --out site/favicon.png > /dev/null
+	swift scripts/generate-favicon.swift /tmp/sliders-favicon-1024.png
+	sips -z 64 64 /tmp/sliders-favicon-1024.png --out site/favicon.png > /dev/null
 	pngquant --force --quality 65-85 --output site/favicon.png site/favicon.png
-	python3 -c "from PIL import Image; Image.open('/tmp/fader-favicon-1024.png').save('site/favicon.ico', sizes=[(16,16),(32,32),(48,48)])"
+	python3 -c "from PIL import Image; Image.open('/tmp/sliders-favicon-1024.png').save('site/favicon.ico', sizes=[(16,16),(32,32),(48,48)])"

@@ -1,6 +1,6 @@
-name: Fader
+name: Sliders
 options:
-  bundleIdPrefix: dev.pantafive
+  bundleIdPrefix: me.kainoa
   deploymentTarget:
     macOS: "15.0"
   createIntermediateGroups: true
@@ -35,20 +35,20 @@ settings:
       STRIP_STYLE: all
 
 targets:
-  Fader:
+  Sliders:
     type: application
     platform: macOS
-    sources: [Fader]
+    sources: [Sliders]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.pantafive.fader
-        INFOPLIST_FILE: Fader/Resources/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Fader/Resources/Fader.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: me.kainoa.sliders
+        INFOPLIST_FILE: Sliders/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sliders/Resources/Sliders.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: Sparkle
       # Loaded by /usr/bin/perl at runtime, never linked into the app.
-      - target: FaderMediaRemote
+      - target: SlidersMediaRemote
         link: false
         embed: true
         codeSign: true
@@ -78,7 +78,7 @@ targets:
           fi
           touch "$DERIVED_FILE_DIR/local-build-mark"
     entitlements:
-      path: Fader/Resources/Fader.entitlements
+      path: Sliders/Resources/Sliders.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.device.audio-input: true
@@ -89,8 +89,8 @@ targets:
         # $(PRODUCT_BUNDLE_IDENTIFIER) — release.yml re-signs with raw
         # codesign, which does not expand build settings.
         com.apple.security.temporary-exception.mach-lookup.global-name:
-          - dev.pantafive.fader-spks
-          - dev.pantafive.fader-spki
+          - me.kainoa.sliders-spks
+          - me.kainoa.sliders-spki
         # Browser tab scanning (NowPlaying/BrowserTabScanner.swift) and media
         # app control (NowPlaying/ScriptedPlayer.swift). The sandbox drops
         # Apple Events to any app not listed here; keep in sync with
@@ -117,19 +117,19 @@ targets:
           - ai.perplexity.comet
 
   # Now-playing helper: /usr/bin/perl dlopens it to reach MediaRemote, which
-  # refuses non-Apple processes since macOS 15.4 (see FaderMediaRemote.m).
-  FaderMediaRemote:
+  # refuses non-Apple processes since macOS 15.4 (see SlidersMediaRemote.m).
+  SlidersMediaRemote:
     type: library.dynamic
     platform: macOS
-    sources: [FaderMediaRemote]
+    sources: [SlidersMediaRemote]
     settings:
       base:
-        PRODUCT_NAME: FaderMediaRemote
+        PRODUCT_NAME: SlidersMediaRemote
         EXECUTABLE_PREFIX: lib
         CLANG_ENABLE_OBJC_ARC: true
         OTHER_LDFLAGS: -framework Foundation
         SKIP_INSTALL: true
-        LD_DYLIB_INSTALL_NAME: "@rpath/libFaderMediaRemote.dylib"
+        LD_DYLIB_INSTALL_NAME: "@rpath/libSlidersMediaRemote.dylib"
       configs:
         Release:
           # perl finds the entry point by name; a full strip would remove it.
@@ -138,42 +138,42 @@ targets:
   # Hostless unit tests: pure-logic sources are compiled into the bundle
   # directly, so no app process needs to launch (LSUIElement hosts hang
   # the test runner).
-  FaderTests:
+  SlidersTests:
     type: bundle.unit-test
     platform: macOS
     sources:
       # Hand-listed on purpose (a glob would silently pull HAL-importing
       # files in) — extracting a new pure-logic source? Add it here too.
       - Tests
-      - Fader/Audio/VolumeStore.swift
-      - Fader/Audio/DeviceUsageStore.swift
-      - Fader/Audio/DevicePriorityStore.swift
-      - Fader/Audio/JSONDefaults.swift
-      - Fader/Audio/DeviceSymbol.swift
-      - Fader/Audio/AudioDevice.swift
-      - Fader/Audio/AudioApp.swift
-      - Fader/Audio/DevicePriorityPolicy.swift
-      - Fader/Audio/MultiOutputPolicy.swift
-      - Fader/Audio/VolumeTaper.swift
-      - Fader/Audio/TapMix.swift
+      - Sliders/Audio/VolumeStore.swift
+      - Sliders/Audio/DeviceUsageStore.swift
+      - Sliders/Audio/DevicePriorityStore.swift
+      - Sliders/Audio/JSONDefaults.swift
+      - Sliders/Audio/DeviceSymbol.swift
+      - Sliders/Audio/AudioDevice.swift
+      - Sliders/Audio/AudioApp.swift
+      - Sliders/Audio/DevicePriorityPolicy.swift
+      - Sliders/Audio/MultiOutputPolicy.swift
+      - Sliders/Audio/VolumeTaper.swift
+      - Sliders/Audio/TapMix.swift
       # Property wrappers and AudioDirection; nothing in the tests touches
       # a live HAL.
-      - Fader/Audio/HALProperty.swift
-      - Fader/NowPlaying/NowPlayingSession.swift
-      - Fader/NowPlaying/BrowserTabScanner.swift
-      - Fader/NowPlaying/TabProbePlanner.swift
-      - Fader/NowPlaying/ScriptedPlayer.swift
-      - Fader/NowPlaying/PlaybackRoute.swift
-      - Fader/UI/AppsListOrder.swift
+      - Sliders/Audio/HALProperty.swift
+      - Sliders/NowPlaying/NowPlayingSession.swift
+      - Sliders/NowPlaying/BrowserTabScanner.swift
+      - Sliders/NowPlaying/TabProbePlanner.swift
+      - Sliders/NowPlaying/ScriptedPlayer.swift
+      - Sliders/NowPlaying/PlaybackRoute.swift
+      - Sliders/UI/AppsListOrder.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: true
 
 schemes:
-  Fader:
+  Sliders:
     build:
       targets:
-        Fader: all
+        Sliders: all
     test:
       targets:
-        - FaderTests
+        - SlidersTests
