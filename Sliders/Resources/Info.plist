@@ -36,5 +36,7 @@
 	<true/>
 	<key>SUFeedURL</key>
 	<string>https://github.com/notkainoa/sliders/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>HPWY6u6Q5nnxP6pGY68GVrOJZ8odtu3eEt6xz0GAT8g=</string>
 </dict>
 </plist>
