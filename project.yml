@@ -160,6 +160,7 @@ targets:
       # a live HAL.
       - Sliders/Audio/HALProperty.swift
       - Sliders/NowPlaying/NowPlayingSession.swift
+      - Sliders/NowPlaying/NowPlayingSelection.swift
       - Sliders/NowPlaying/BrowserTabScanner.swift
       - Sliders/NowPlaying/TabProbePlanner.swift
       - Sliders/NowPlaying/ScriptedPlayer.swift

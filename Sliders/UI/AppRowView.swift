@@ -34,7 +34,7 @@ struct AppRowView: View {
     /// moment a card's button is pressed) decide both ways when they can.
     private var isAudible: Bool {
         let nowPlaying = engine.nowPlaying
-        if nowPlaying.sessions(forBundleID: app.bundleID).contains(where: \.isPlaying) { return true }
+        if nowPlaying.playingBundleIDs.contains(app.bundleID) { return true }
         return app.isPlaying && !nowPlaying.pausedAudioBundleIDs.contains(app.bundleID)
     }
 
@@ -85,6 +85,10 @@ struct AppRowView: View {
             // card's play button is for.
             ForEach(engine.nowPlaying.sessions(forBundleID: app.bundleID)) { session in
                 NowPlayingCard(session: session)
+                    .transition(.opacity)
+            }
+            if NowPlayingOverflowToggle.isShown(for: app.bundleID, in: engine.nowPlaying) {
+                NowPlayingOverflowToggle(bundleID: app.bundleID)
                     .transition(.opacity)
             }
             if engine.nowPlaying.shouldShowJavaScriptHint(for: app.bundleID) {

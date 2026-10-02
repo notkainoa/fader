@@ -30,6 +30,13 @@ final class NowPlayingMonitor {
     /// Media apps the user declined Automation access for; their sessions
     /// can't be controlled unless they are the elected now-playing app.
     internal(set) var deniedPlayers: Set<String> = []
+    /// Per browser, how many cards wait behind its "Show more" toggle.
+    internal(set) var overflowCounts: [String: Int] = [:]
+    /// Browsers whose cards the user expanded; collapsed when the popover
+    /// closes.
+    internal(set) var expandedBrowsers: Set<String> = []
+    /// Apps with a playing session, shown or not.
+    private(set) var playingBundleIDs: Set<String> = []
 
     /// Bundle IDs of apps currently producing sound, for deciding which
     /// browsers are worth scanning.
@@ -40,14 +47,18 @@ final class NowPlayingMonitor {
     /// Per browser, normalized titles MediaRemote has reported and when each
     /// last played. The helper runs even while the popover is closed, so
     /// this remembers what was played between scans.
-    @ObservationIgnored private var recentMediaRemoteTitles: [String: [String: Date]] = [:]
+    @ObservationIgnored private(set) var recentMediaRemoteTitles: [String: [String: Date]] = [:]
     @ObservationIgnored var bridge: MediaRemoteBridge?
     @ObservationIgnored let scanner = BrowserTabScanner()
     @ObservationIgnored private var scanTask: Task<Void, Never>?
-    @ObservationIgnored private var isPopoverVisible = false
+    @ObservationIgnored private(set) var isPopoverVisible = false
     /// Commands awaiting confirmation, keyed by session id.
     @ObservationIgnored var pendingPlayback: [String: PendingPlayback] = [:]
-    @ObservationIgnored private var playingBundleIDs: Set<String> = []
+    /// When each playing session (by id) started playing.
+    @ObservationIgnored var playingSince: [String: Date] = [:]
+    /// Per browser, the card ids on screen since the popover opened, in
+    /// order; empty while it is closed.
+    @ObservationIgnored var shownWhileOpen: [String: [String]] = [:]
     @ObservationIgnored private var deniedBrowsers: Set<String> = []
     @ObservationIgnored var artworkLoads: Set<String> = []
     /// Artwork URLs that failed to load, and when; retried after a while.
@@ -58,6 +69,7 @@ final class NowPlayingMonitor {
         func seedForRender(sessions: [NowPlayingSession], artwork: [String: NSImage] = [:]) {
             self.sessions = sessions
             self.artwork = artwork
+            playingBundleIDs = Set(sessions.filter(\.isPlaying).map(\.ownerBundleID))
         }
     #endif
 
@@ -78,10 +90,6 @@ final class NowPlayingMonitor {
         scanTask = nil
     }
 
-    func sessions(forBundleID bundleID: String) -> [NowPlayingSession] {
-        sessions.filter { $0.ownerBundleID == bundleID }
-    }
-
     /// Browser tabs are scanned every couple of seconds while the popover is
     /// on screen and only occasionally while it is closed: each scan runs a
     /// script in every awake tab.
@@ -96,6 +104,9 @@ final class NowPlayingMonitor {
             deniedBrowsers.removeAll()
             deniedPlayers.removeAll()
             bridge?.retryIfNeeded()
+            keepShownCards()
+        } else {
+            releaseShownCards()
         }
         restartScans(waitFirst: !visible)
     }
@@ -139,7 +150,7 @@ final class NowPlayingMonitor {
             // thing played in that browser, so it counts as played now.
             guard session.isPlaying || titles[title] == nil else { continue }
             titles[title] = now
-            if titles.count > TabProbePlanner.maxVisibleSessions * 4,
+            if titles.count > NowPlayingSelection.collapsedLimit * 4,
                let oldest = titles.min(by: { $0.value < $1.value })?.key {
                 titles[oldest] = nil
             }
@@ -284,16 +295,17 @@ final class NowPlayingMonitor {
 
     func publish() {
         let now = Date()
-        let tabs = tabPlanners.mapValues {
-            $0.visibleSessions(recentTitles: recentMediaRemoteTitles[$0.ownerBundleID] ?? [:], now: now)
+        let candidates = tabPlanners.mapValues {
+            $0.candidates(recentTitles: recentMediaRemoteTitles[$0.ownerBundleID] ?? [:], now: now)
         }
+        let tabs = candidates.mapValues { $0.map(\.session) }
         var hiddenTabTitles: [String: Set<String>] = [:]
         for (bundleID, planner) in tabPlanners {
             let shown = Set((tabs[bundleID] ?? []).map { NowPlayingMerge.normalized($0.title) })
             hiddenTabTitles[bundleID] = planner.knownTitles.subtracting(shown)
         }
         // A browser's own now-playing session follows the same rule as its
-        // tabs: a paused one goes away an hour after it last played, even
+        // tabs: a paused one goes away `pausedLifetime` after it last played, even
         // when its tab is asleep and can't be matched.
         let mediaRemote = mediaRemoteSessions.filter { session in
             guard !session.isPlaying, BrowserFlavor.supported[session.ownerBundleID] != nil,
@@ -306,10 +318,14 @@ final class NowPlayingMonitor {
         pendingPlayback = pendingPlayback.filter { $0.value.expires > now }
         let merged = PendingPlayback.apply(
             pendingPlayback,
-            to: NowPlayingMerge.merge(mediaRemote: mediaRemote, tabs: tabs, hiddenTabTitles: hiddenTabTitles),
+            to: NowPlayingMerge.merge(mediaRemote: mediaRemote, tabs: tabs, hiddenTabTitles: hiddenTabTitles,
+                                      embeds: tabPlanners.mapValues(\.embeds)),
             at: now
         )
-        if merged != sessions { sessions = merged }
+        updatePlayingSince(merged, now: now)
+        let played = playedDates(tabs: candidates.values.joined(), mediaRemote: mediaRemote)
+        let selected = selectBrowserCards(merged, played: played)
+        if selected != sessions { sessions = selected }
 
         let playing = Set(merged.filter(\.isPlaying).map(\.ownerBundleID))
         if playing != playingBundleIDs {

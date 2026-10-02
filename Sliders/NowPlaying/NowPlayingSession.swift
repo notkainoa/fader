@@ -229,6 +229,66 @@ struct BrowserTabMedia: Decodable, Equatable, Sendable {
     }
 }
 
+/// A tab with no media of its own but a frame that looks like an embedded
+/// player from another site, which the page script can't look into. Its
+/// media reaches Sliders only as the browser's MediaRemote session, which
+/// then carries the player's own, often generic, title; the page's details
+/// stand in for it (see NowPlayingMerge).
+struct BrowserTabEmbed: Decodable, Equatable, Sendable {
+    let title: String
+    let site: String
+    let artwork: String?
+    /// The player frame has focus: the user clicked into it.
+    let isFocused: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case marker = "x", title = "t", site = "a", artwork = "art", focused = "f"
+    }
+
+    init(title: String, site: String, artwork: String?, isFocused: Bool) {
+        self.title = title
+        self.site = site
+        self.artwork = artwork
+        self.isFocused = isFocused
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard try container.decode(Int.self, forKey: .marker) == 1 else {
+            throw DecodingError.dataCorruptedError(forKey: .marker, in: container, debugDescription: "not an embed")
+        }
+        title = try container.decode(String.self, forKey: .title)
+        site = try container.decode(String.self, forKey: .site)
+        let artwork = try container.decodeIfPresent(String.self, forKey: .artwork)
+        self.artwork = artwork?.isEmpty == false ? artwork : nil
+        isFocused = try container.decodeIfPresent(Int.self, forKey: .focused) == 1
+    }
+
+    static func parse(json: String) -> BrowserTabEmbed? {
+        guard let embed = try? JSONDecoder().decode(BrowserTabEmbed.self, from: Data(json.utf8)),
+              !embed.title.isEmpty
+        else { return nil }
+        return embed
+    }
+
+    /// The tab a browser's unmatched session most likely plays in: the only
+    /// one with a player frame, or the only one whose player has focus.
+    static func likelySource(among embeds: [BrowserTabEmbed]) -> BrowserTabEmbed? {
+        if embeds.count == 1 { return embeds[0] }
+        let focused = embeds.filter(\.isFocused)
+        return focused.count == 1 ? focused[0] : nil
+    }
+
+    /// The session shown with the page's title, site, and (when MediaRemote
+    /// has none) image.
+    func describe(_ session: NowPlayingSession) -> NowPlayingSession {
+        NowPlayingSession(source: session.source, ownerBundleID: session.ownerBundleID, title: title,
+                          subtitle: site.isEmpty ? session.subtitle : site, duration: session.duration,
+                          position: session.position, positionDate: session.positionDate, rate: session.rate,
+                          artworkKey: session.artworkKey ?? artwork, isElected: session.isElected)
+    }
+}
+
 // MARK: - Merging
 
 enum NowPlayingMerge {
@@ -241,9 +301,11 @@ enum NowPlayingMerge {
     /// found but isn't shown (`hiddenTabTitles`, normalized, per browser):
     /// hiding the tab must not bring its media back as a separate card. One
     /// that matches no tab, such as a video in a cross-origin frame the page
-    /// script can't reach, stays.
+    /// script can't reach, stays, described by its tab when `embeds` (per
+    /// browser, tabs with a player frame) point to one.
     static func merge(mediaRemote: [NowPlayingSession], tabs: [String: [NowPlayingSession]],
-                      hiddenTabTitles: [String: Set<String>] = [:]) -> [NowPlayingSession] {
+                      hiddenTabTitles: [String: Set<String>] = [:],
+                      embeds: [String: [BrowserTabEmbed]] = [:]) -> [NowPlayingSession] {
         var result: [NowPlayingSession] = []
         var tabsByOwner = tabs
 
@@ -259,7 +321,8 @@ enum NowPlayingMerge {
                     tabsByOwner[session.ownerBundleID] = ownerTabs
                 }
             } else if hiddenTabTitles[session.ownerBundleID]?.contains(key) != true {
-                result.append(session)
+                let source = BrowserTabEmbed.likelySource(among: embeds[session.ownerBundleID] ?? [])
+                result.append(source?.describe(session) ?? session)
             }
         }
 
