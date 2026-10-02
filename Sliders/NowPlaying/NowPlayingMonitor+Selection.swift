@@ -32,6 +32,7 @@ extension NowPlayingMonitor {
         if !expandedBrowsers.isEmpty { expandedBrowsers.removeAll() }
         publish()
     }
+
     /// When each session (by id) last played: tabs as their planner saw
     /// them, browsers' own sessions as MediaRemote reported them.
     func playedDates(tabs: some Sequence<TabProbePlanner.Candidate>,

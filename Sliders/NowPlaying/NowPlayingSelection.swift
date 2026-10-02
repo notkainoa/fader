@@ -44,7 +44,7 @@ enum NowPlayingSelection {
     /// played last.
     private static func rank(_ sessions: [NowPlayingSession], played: [String: Date],
                              playingSince: [String: Date]) -> [NowPlayingSession] {
-        let playing = sessions.enumerated().filter { $0.element.isPlaying }
+        let playing = sessions.enumerated().filter(\.element.isPlaying)
         if !playing.isEmpty {
             // Ties (tabs first seen in the same scan) fall back to tab order.
             return playing.sorted { lhs, rhs in
