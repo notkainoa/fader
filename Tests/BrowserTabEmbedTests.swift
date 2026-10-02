@@ -40,12 +40,15 @@ struct BrowserTabEmbedTests {
         #expect(kept.first?.artworkKey == "mr-art")
     }
 
-    @Test("the page script reports a player frame, and skips small or unprivileged frames")
+    @Test("the page script reports a player frame, and skips small, unprivileged, or off-screen frames")
     func pageScriptFindsPlayerFrame() throws {
-        func run(width: Int, allow: String, focused: Bool, video: Bool = false) throws -> String {
+        func run(width: Int, allow: String, focused: Bool, top: Int = 100, height: Int = 450,
+                 video: Bool = false) throws -> String {
             let context = try #require(JSContext())
             context.evaluateScript("""
-            var frame={tagName:'IFRAME',getBoundingClientRect:function(){return {width:\(width),height:450};},\
+            var innerWidth=1200,innerHeight=600;
+            var frame={tagName:'IFRAME',getBoundingClientRect:function(){return {width:\(width),height:\(height),\
+            top:\(top),left:0,bottom:\(top + height),right:\(width)};},\
             getAttribute:function(n){return n==='allow'?'\(allow)':null;},hasAttribute:function(){return false;}};
             var media={readyState:4,muted:false,volume:1,duration:60,ended:false,paused:false,currentTime:5,\
             playbackRate:1};
@@ -61,6 +64,9 @@ struct BrowserTabEmbedTests {
         #expect(embed == BrowserTabEmbed(title: "Movie Night", site: "example.com", artwork: nil, isFocused: true))
         #expect(try run(width: 300, allow: "fullscreen", focused: false).isEmpty)
         #expect(try run(width: 800, allow: "", focused: false).isEmpty)
+        // Taller than the window but in view counts; scrolled far away doesn't.
+        #expect(try !run(width: 704, allow: "fullscreen", focused: false, height: 843).isEmpty)
+        #expect(try run(width: 800, allow: "fullscreen", focused: false, top: 2000).isEmpty)
 
         let ref = BrowserTabRef(windowID: "1", tabKey: "1")
         let media = try run(width: 800, allow: "fullscreen", focused: false, video: true)

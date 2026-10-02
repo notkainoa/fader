@@ -359,15 +359,17 @@ extension BrowserTabScanner {
     """
 
     /// Whether the page holds a frame that looks like an embedded video
-    /// player: big enough to watch, and allowed to go fullscreen or autoplay
-    /// (ads and embedded posts rarely are). A frame from another site can't
-    /// be looked into, so this is as much as the page can tell.
+    /// player: big enough to watch, at least partly in view (players are
+    /// often taller than the window), and allowed to go fullscreen or
+    /// autoplay (ads and embedded posts rarely are). A frame from another
+    /// site can't be looked into, so this is as much as the page can tell.
     private static let hasPlayerFrame = """
     function(){return [].slice.call(document.querySelectorAll('iframe')).some(function(f){\
     var r=f.getBoundingClientRect();\
     var a=[f.getAttribute('allow')||'',f.hasAttribute('allowfullscreen')?'fullscreen':'',\
     f.hasAttribute('webkitallowfullscreen')?'fullscreen':''].join(' ');\
-    return r.width>=320&&r.height>=180&&/fullscreen|autoplay/.test(a);});}
+    return r.width>=320&&r.height>=180&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&\
+    /fullscreen|autoplay/.test(a);});}
     """
 
     /// The tab's media as BrowserTabMedia JSON, or, with none on the page

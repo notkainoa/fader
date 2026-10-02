@@ -68,6 +68,9 @@ extension NowPlayingMonitor {
         var stillExpanded: Set<String> = []
         let byBrowser = Dictionary(grouping: sessions.filter { BrowserFlavor.supported[$0.ownerBundleID] != nil },
                                    by: \.ownerBundleID)
+        // A browser left with no sessions has no cards on screen; a tab of
+        // it that comes back is new, not kept.
+        if isPopoverVisible { shownWhileOpen = shownWhileOpen.filter { byBrowser[$0.key] != nil } }
         for (bundleID, browserSessions) in byBrowser.sorted(by: { $0.key < $1.key }) {
             let expanded = expandedBrowsers.contains(bundleID)
             let selection = NowPlayingSelection.select(
