@@ -48,6 +48,8 @@ struct AppsList: View {
     private var nowPlayingLayout: [String] {
         let nowPlaying = engine.nowPlaying
         return nowPlaying.sessions.map(\.id)
+            + nowPlaying.overflowCounts.keys.sorted().map { "more:\($0)" }
+            + nowPlaying.expandedBrowsers.sorted().map { "less:\($0)" }
             + nowPlaying.browsersNeedingJavaScript.subtracting(nowPlaying.dismissedJavaScriptHints).sorted()
             .map { "hint:\($0)" }
     }
@@ -57,6 +59,10 @@ struct AppsList: View {
             NowPlayingAppHeader(bundleID: bundleID)
             ForEach(engine.nowPlaying.sessions(forBundleID: bundleID)) { session in
                 NowPlayingCard(session: session)
+                    .transition(.opacity)
+            }
+            if NowPlayingOverflowToggle.isShown(for: bundleID, in: engine.nowPlaying) {
+                NowPlayingOverflowToggle(bundleID: bundleID)
                     .transition(.opacity)
             }
             if engine.nowPlaying.shouldShowJavaScriptHint(for: bundleID) {
@@ -90,11 +96,15 @@ struct AppsList: View {
         NowPlayingAppHeader.height + Self.groupSpacing + nowPlayingHeight(for: bundleID)
     }
 
-    /// Height of the now-playing cards (and JavaScript hint) under one app.
+    /// Height of the now-playing cards (and their toggle and JavaScript
+    /// hint) under one app.
     private func nowPlayingHeight(for bundleID: String) -> CGFloat {
-        let cards = CGFloat(engine.nowPlaying.sessions(forBundleID: bundleID).count)
-        let hint: CGFloat = engine.nowPlaying.shouldShowJavaScriptHint(for: bundleID)
+        let nowPlaying = engine.nowPlaying
+        let cards = CGFloat(nowPlaying.sessions(forBundleID: bundleID).count)
+        let toggle: CGFloat = NowPlayingOverflowToggle.isShown(for: bundleID, in: nowPlaying)
+            ? NowPlayingOverflowToggle.height + AppRowView.lineSpacing : 0
+        let hint: CGFloat = nowPlaying.shouldShowJavaScriptHint(for: bundleID)
             ? BrowserJavaScriptHint.height + AppRowView.lineSpacing : 0
-        return cards * (NowPlayingCard.height + AppRowView.lineSpacing) + hint
+        return cards * (NowPlayingCard.height + AppRowView.lineSpacing) + toggle + hint
     }
 }

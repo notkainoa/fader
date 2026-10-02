@@ -74,6 +74,21 @@ struct TabProbePlannerTests {
         #expect(planner.sessions.map(\.title) == ["Cool Video"])
     }
 
+    @Test("a tab with only a player frame is remembered as an embed, not media, until it stops reporting one")
+    func embedTabs() {
+        var planner = TabProbePlanner(ownerBundleID: owner)
+        _ = planner.plan(tabs: [tab("a"), tab("b")], preferredTitles: [], now: start)
+        planner.record(.media(#"{"x":1,"t":"Movie Night","a":"a.com","art":""}"#), for: tab("b").ref, now: start)
+
+        #expect(planner.sessions.isEmpty)
+        #expect(planner.embeds.map(\.title) == ["Movie Night"])
+        #expect(planner.plan(tabs: [tab("a"), tab("b")], preferredTitles: [], now: start + 2).map(\.ref.tabKey)
+            == ["b", "a"])
+
+        planner.record(.noMedia, for: tab("b").ref, now: start + 2)
+        #expect(planner.embeds.isEmpty)
+    }
+
     @Test("a tab refusing JavaScript flags the browser until it answers")
     func blockedTabs() {
         var planner = TabProbePlanner(ownerBundleID: owner)
@@ -96,11 +111,11 @@ struct TabProbePlannerTests {
         planner.record(.media(media.replacingOccurrences(of: "Cool", with: "Stale")), for: tab("b").ref, now: start)
         planner.record(.media(media), for: tab("c").ref, now: start)
 
-        #expect(planner.visibleSessions(recentTitles: ["cool video": start], now: start).map(\.title)
+        #expect(planner.candidates(recentTitles: ["cool video": start], now: start).map(\.session.title)
             == ["Watched Video", "Cool Video"])
     }
 
-    @Test("a paused tab's card goes away an hour after it last played; a playing one stays")
+    @Test("a paused tab's card goes away 15 minutes after it last played; a playing one stays")
     func pausedTabsExpire() {
         var planner = TabProbePlanner(ownerBundleID: owner)
         _ = planner.plan(tabs: [tab("a"), tab("b")], preferredTitles: [], now: start)
@@ -111,9 +126,9 @@ struct TabProbePlannerTests {
                        now: start)
 
         let later = start + TabProbePlanner.pausedLifetime + 1
-        #expect(planner.visibleSessions(recentTitles: [:], now: start + 60).map(\.title)
+        #expect(planner.candidates(recentTitles: [:], now: start + 60).map(\.session.title)
             == ["Cool Video", "Live Video"])
-        #expect(planner.visibleSessions(recentTitles: [:], now: later).map(\.title) == ["Live Video"])
+        #expect(planner.candidates(recentTitles: [:], now: later).map(\.session.title) == ["Live Video"])
         #expect(planner.knownTitles == ["cool video", "live video"])
     }
 
@@ -126,21 +141,21 @@ struct TabProbePlannerTests {
 
         // Safari: the playing tab closed and a long-paused one slid into index 1.
         _ = planner.plan(tabs: [tab("1", url: "https://b.com")], preferredTitles: [], now: start + 2)
-        #expect(planner.visibleSessions(recentTitles: [:], now: start + 2).map(\.title) == ["Cool Video"])
+        #expect(planner.candidates(recentTitles: [:], now: start + 2).map(\.session.title) == ["Cool Video"])
         planner.record(.media(media.replacingOccurrences(of: "Cool", with: "Stale")), for: tab("1").ref,
                        now: start + 2)
-        #expect(planner.visibleSessions(recentTitles: [:], now: start + 2).isEmpty)
+        #expect(planner.candidates(recentTitles: [:], now: start + 2).isEmpty)
 
         // An autoplaying next video keeps its card throughout.
         _ = planner.plan(tabs: [tab("1", url: "https://c.com")], preferredTitles: [], now: start + 4)
         planner.record(.media(playing.replacingOccurrences(of: "Cool", with: "Next")), for: tab("1").ref,
                        now: start + 4)
         _ = planner.plan(tabs: [tab("1", url: "https://d.com")], preferredTitles: [], now: start + 6)
-        #expect(planner.visibleSessions(recentTitles: [:], now: start + 6).map(\.title) == ["Next Video"])
+        #expect(planner.candidates(recentTitles: [:], now: start + 6).map(\.session.title) == ["Next Video"])
     }
 
-    @Test("at most three tab cards: playing first, then most recently played, shown in tab order")
-    func visibleLimit() {
+    @Test("candidates are every qualifying tab in tab order, with when each last played")
+    func candidatesCarryPlayed() {
         var planner = TabProbePlanner(ownerBundleID: owner)
         let keys = ["a", "b", "c", "d", "e"]
         _ = planner.plan(tabs: keys.map { tab($0) }, preferredTitles: [], now: start)
@@ -155,9 +170,8 @@ struct TabProbePlannerTests {
                            for: tab(key).ref, now: start + 10)
         }
 
-        #expect(planner.visibleSessions(recentTitles: [:], now: start + 20).map(\.title)
-            == ["C Video", "D Video", "E Video"])
-        #expect(planner.visibleSessions(recentTitles: ["a video": start + 20], now: start + 20).map(\.title)
-            == ["A Video", "D Video", "E Video"])
+        let candidates = planner.candidates(recentTitles: ["a video": start + 20], now: start + 20)
+        #expect(candidates.map(\.session.title) == ["A Video", "B Video", "C Video", "D Video", "E Video"])
+        #expect(candidates.map(\.played) == [start + 20, start + 1, start + 2, start + 3, start + 4])
     }
 }

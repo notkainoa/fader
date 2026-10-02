@@ -358,13 +358,32 @@ extension BrowserTabScanner {
     l.sort(function(a,b){return (a.paused-b.paused)||(b.currentTime-a.currentTime);});return l[0];}
     """
 
+    /// Whether the page holds a frame that looks like an embedded video
+    /// player: big enough to watch, at least partly in view (players are
+    /// often taller than the window), and allowed to go fullscreen or
+    /// autoplay (ads and embedded posts rarely are). A frame from another
+    /// site can't be looked into, so this is as much as the page can tell.
+    private static let hasPlayerFrame = """
+    function(){return [].slice.call(document.querySelectorAll('iframe')).some(function(f){\
+    var r=f.getBoundingClientRect();\
+    var a=[f.getAttribute('allow')||'',f.hasAttribute('allowfullscreen')?'fullscreen':'',\
+    f.hasAttribute('webkitallowfullscreen')?'fullscreen':''].join(' ');\
+    return r.width>=320&&r.height>=180&&r.bottom>0&&r.right>0&&r.top<innerHeight&&r.left<innerWidth&&\
+    /fullscreen|autoplay/.test(a);});}
+    """
+
+    /// The tab's media as BrowserTabMedia JSON, or, with none on the page
+    /// itself but a player frame, the page's details as BrowserTabEmbed JSON.
     static let reportMedia = """
-    (function(){try{var m=(\(pickMedia))();if(!m)return '';\
+    (function(){try{var m=(\(pickMedia))();\
     var s=navigator.mediaSession&&navigator.mediaSession.metadata;var art='';\
     if(s&&s.artwork&&s.artwork.length){art=s.artwork[s.artwork.length-1].src;}\
     if(!art){var o=document.querySelector('meta[property="og:image"]');if(o)art=o.content;}\
     if(art){try{art=new URL(art,location.href).href;}catch(e){art='';}}\
-    return JSON.stringify({t:(s&&s.title)||document.title,a:(s&&s.artist)||location.hostname.replace(/^www\\./,''),\
+    var h=location.hostname.replace(/^www\\./,'');\
+    if(!m){if(!(\(hasPlayerFrame))())return '';var x=document.activeElement;\
+    return JSON.stringify({x:1,t:document.title,a:h,art:art,f:x&&x.tagName==='IFRAME'?1:0});}\
+    return JSON.stringify({t:(s&&s.title)||document.title,a:(s&&s.artist)||h,\
     d:isFinite(m.duration)?m.duration:-1,e:m.currentTime,p:m.paused?0:m.playbackRate,art:art});\
     }catch(e){return '';}})()
     """

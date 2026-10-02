@@ -238,6 +238,38 @@ struct NowPlayingAppHeader: View {
     }
 }
 
+/// Under a browser playing more tabs than fit collapsed: reveals the rest
+/// until the user collapses them or the popover closes.
+struct NowPlayingOverflowToggle: View {
+    static let height: CGFloat = 16
+
+    @Environment(MixerEngine.self) private var engine
+    let bundleID: String
+
+    static func isShown(for bundleID: String, in nowPlaying: NowPlayingMonitor) -> Bool {
+        nowPlaying.isExpanded(bundleID) || nowPlaying.overflowCounts[bundleID] != nil
+    }
+
+    var body: some View {
+        let nowPlaying = engine.nowPlaying
+        let expanded = nowPlaying.isExpanded(bundleID)
+        Button {
+            nowPlaying.toggleExpanded(bundleID)
+        } label: {
+            HStack(spacing: 3) {
+                Text(expanded ? "Show less" : "Show \(nowPlaying.overflowCounts[bundleID] ?? 0) more")
+                Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            .font(.system(size: 10, weight: .medium))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: Self.height, alignment: .center)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 /// Shown under a browser whose tabs could be listed one by one if it allowed
 /// JavaScript from Apple Events. It is also what makes a browser controllable
 /// when it isn't the elected now-playing app: tab sessions take commands

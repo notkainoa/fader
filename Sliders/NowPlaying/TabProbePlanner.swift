@@ -21,6 +21,8 @@ struct TabProbePlanner {
         var tab: BrowserTab
         var status = Status.unknown
         var session: NowPlayingSession?
+        /// No media on the page, but a player frame from another site.
+        var embed: BrowserTabEmbed?
         var timeouts = 0
         var retryAt: Date?
         /// The tab had media and missed one reply; its card is kept for one
@@ -46,11 +48,12 @@ struct TabProbePlanner {
         /// No reply: keep a media card for one more round, then back off.
         mutating func recordMiss(now: Date) {
             status = .unresponsive
-            if session != nil, !keptAfterMiss {
+            if session != nil || embed != nil, !keptAfterMiss {
                 keptAfterMiss = true
                 retryAt = nil
             } else {
                 session = nil
+                embed = nil
                 keptAfterMiss = false
                 timeouts += 1
                 retryAt = now + TabProbePlanner.backoff[min(timeouts, TabProbePlanner.backoff.count) - 1]
@@ -58,11 +61,15 @@ struct TabProbePlanner {
         }
     }
 
+    /// A tab worth a card, and when it last played.
+    struct Candidate: Equatable {
+        let session: NowPlayingSession
+        let played: Date
+    }
+
     static let backoff: [TimeInterval] = [20, 40, 60]
-    /// Most tab cards shown per browser.
-    static let maxVisibleSessions = 3
     /// A paused tab's card goes away this long after it last played.
-    static let pausedLifetime: TimeInterval = 60 * 60
+    static let pausedLifetime: TimeInterval = 15 * 60
 
     let ownerBundleID: String
     private var order: [BrowserTabRef] = []
@@ -77,38 +84,33 @@ struct TabProbePlanner {
         order.compactMap { entries[$0]?.session }
     }
 
+    /// Tabs with a player frame from another site, in tab-strip order.
+    var embeds: [BrowserTabEmbed] {
+        order.compactMap { entries[$0]?.embed }
+    }
+
     /// Normalized titles of every media element found, shown or not.
     var knownTitles: Set<String> {
         Set(sessions.map { NowPlayingMerge.normalized($0.title) })
     }
 
-    /// The tabs worth a card: playing now, or paused within the last
-    /// `pausedLifetime`; at most `maxVisibleSessions`, in tab-strip order so
-    /// cards don't reshuffle.
+    /// The tabs worth a card, in tab-strip order: playing now, or paused
+    /// within the last `pausedLifetime`. NowPlayingSelection picks which of
+    /// them are shown.
     ///
     /// A video left paused halfway through hours ago still reports itself,
     /// so a paused tab only counts once it has been seen playing, or when
     /// MediaRemote reported its title (`recentTitles`, normalized title to
     /// last time seen), which covers media played before Sliders launched.
-    func visibleSessions(recentTitles: [String: Date], now: Date) -> [NowPlayingSession] {
-        struct Candidate {
-            let index: Int
-            let session: NowPlayingSession
-            let played: Date
-        }
-        let candidates = order.enumerated().compactMap { index, ref -> Candidate? in
+    func candidates(recentTitles: [String: Date], now: Date) -> [Candidate] {
+        order.compactMap { ref -> Candidate? in
             guard let entry = entries[ref], let session = entry.session else { return nil }
             let played = [entry.lastPlayed, recentTitles[NowPlayingMerge.normalized(session.title)]]
                 .compactMap(\.self).max()
             guard let played, session.isPlaying || now.timeIntervalSince(played) < Self.pausedLifetime
             else { return nil }
-            return Candidate(index: index, session: session, played: played)
+            return Candidate(session: session, played: played)
         }
-        return candidates
-            .sorted { ($0.session.isPlaying ? 1 : 0, $0.played) > ($1.session.isPlaying ? 1 : 0, $1.played) }
-            .prefix(Self.maxVisibleSessions)
-            .sorted { $0.index < $1.index }
-            .map(\.session)
     }
 
     /// Some tab refused JavaScript: the setting is off in at least one
@@ -141,7 +143,7 @@ struct TabProbePlanner {
 
         func rank(_ tab: BrowserTab) -> Int {
             if preferredTitles.contains(NowPlayingMerge.normalized(tab.title)) { return 0 }
-            if entries[tab.ref]?.session != nil { return 1 }
+            if entries[tab.ref]?.session != nil || entries[tab.ref]?.embed != nil { return 1 }
             if tab.isActive { return 2 }
             return 3
         }
@@ -156,6 +158,7 @@ struct TabProbePlanner {
         switch outcome {
         case let .media(json):
             entry.session = BrowserTabMedia.session(json: json, tab: ref, ownerBundleID: ownerBundleID, now: now)
+            entry.embed = entry.session == nil ? BrowserTabEmbed.parse(json: json) : nil
             if entry.session?.isPlaying == true {
                 entry.lastPlayed = now
             } else if entry.pageChanged {
@@ -164,10 +167,12 @@ struct TabProbePlanner {
             entry.markAnswered(.answered)
         case .noMedia:
             entry.session = nil
+            entry.embed = nil
             if entry.pageChanged { entry.lastPlayed = nil }
             entry.markAnswered(.answered)
         case .blocked:
             entry.session = nil
+            entry.embed = nil
             if entry.pageChanged { entry.lastPlayed = nil }
             entry.markAnswered(.blocked)
         case .timedOut, .failed:
